@@ -4,7 +4,9 @@
 
 [中文](README.md) | English
 
-Clicks, terminal commands, and changing data can be easier to explain in motion. heige-svg turns article blocks, data, and timelines into inline SVG + SMIL animations and an HTML preview. Edit the script and rebuild when the wording or numbers change.
+Clicks, terminal commands, and changing data can be easier to explain in motion. heige-svg turns article blocks, data, and timelines into inline SVG + SMIL animations, WeChat-ready article HTML, and an HTML preview. Edit the script and rebuild when the wording or numbers change.
+
+You can also write the article in Markdown. Code fences become copyable prompt cards, and every build produces a publishing console page with one-click copy for the title, digest, cover image, and body.
 
 The toolkit includes eight scene templates, output validation, frame capture, an experimental draft publisher, and a Claude Code skill for choosing scenes and building illustrations from an article.
 
@@ -15,7 +17,7 @@ The toolkit includes eight scene templates, output validation, frame capture, an
   <img src="docs/demo/bar-race.svg" width="48%" alt="Bar chart scene">
 </p>
 
-**This is an experimental project.** Local compilation, validation, frame capture, and playback in Chrome at a mobile viewport have been checked. The publishing script has only been tested against a local mock service. **No draft has been sent to a real WeChat Official Account, and playback inside the mobile WeChat app has not been verified.** Whether the draft API preserves all SVG animation remains unknown.
+**This is an experimental project.** Local compilation, validation, frame capture, and playback in Chrome at a mobile viewport have been checked, and the four copy buttons of the publishing console write to the clipboard in Chrome. **How much of the SVG animation and card styling survives pasting into the WeChat editor has not been tested.** The publishing script has only been tested against a local mock service. **No draft has been sent to a real WeChat Official Account, and playback inside the mobile WeChat app has not been verified.** Whether the draft API preserves all SVG animation remains unknown.
 
 The output is suitable for local demonstrations and exploring article illustrations. Before using it in a real account, try a small test draft, inspect the returned HTML, and preview it on a phone.
 
@@ -36,6 +38,7 @@ The font download is approximately 13 MB. The generated files include:
 - `out/demo/preview.html`: an article preview with live animations.
 - `out/demo/qa/sheet.png`: a contact sheet of animation frames.
 - `out/demo/article.html`: article HTML containing inline SVG.
+- `out/demo/console.html`: a publishing console with one-click copy for title, digest, cover, and body.
 - `out/demo/fig*.svg`: individual illustrations.
 
 On macOS, open the preview with:
@@ -80,6 +83,19 @@ node bin/qa.mjs out/my-article
 Available scenes: `terminalRun`, `uiClick`, `barRace`, `gridWall`, `pipeline`, `phoneChat`, `timelineList`, and `rankCards`. Set `meta.theme` to `paper` (default), `mono`, `amber`, or `blue`.
 
 For custom scenes, see [the scene guide](docs/writing-scenes.md) and [primitive examples](examples/primitives.mjs). These guides are currently in Chinese.
+
+## Markdown input and the publishing console
+
+Articles without animations can be written as Markdown and built directly:
+
+```bash
+node bin/build.mjs examples/markdown.md out/markdown
+open "$(pwd)/out/markdown/console.html"
+```
+
+Optional front matter between `---` lines sets `title`, `author`, `digest`, and `cover`. In the body, `## ` is a subheading, `- ` a list, `> ` a quote, ```` ```prompt Title ```` a copyable prompt card (`【…】` placeholders are highlighted), ```` ```say Title ```` a one-line script card, and `[[图1]]` a figure placeholder. To combine Markdown with animated figures, use `fromMarkdown(md, { figs })` from `src/markdown.mjs`; see [examples/markdown-figs.mjs](examples/markdown-figs.mjs). Scripts can also use `{ prompt: { title, text } }` and `{ say: { title, text } }` blocks, with colors overridden by `cardTheme`.
+
+Every build writes `console.html`: title and digest with character counts, cover images from `covers` or `cover`, and a phone-width preview. Its buttons copy the title and digest as text, the cover as a PNG image, and the body as both HTML and plain text. `publish.py` falls back to the first registered cover when `--cover` is omitted.
 
 ## Experimental draft publishing
 

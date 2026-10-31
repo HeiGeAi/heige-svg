@@ -4,6 +4,7 @@ export default {
   title: '那些会动的配图，不是 GIF',
   author: '示例',
   digest: '49 张动图，0 个 GIF',
+  covers: [{ label: '示例封面', path: 'assets/cover.png' }],
   blocks: [
     { p: '最近看赛博禅心的文章，配图都是会动的。我以为是 GIF，打开源码一看：**一个 GIF 都没有**' },
     { scene: 'terminalRun', meta: { eyebrow: `${eb} · 看源码`, title: '每张动图，其实都是一段代码', foot: [{ t: '5 篇文章，' }, { t: '49 段内联 SVG', b: true }] },

@@ -101,8 +101,11 @@ def main():
     if not args.send:
         print("演练结束，没有联网。确认后加 --send。")
         return 0
+    # 没给 --cover 时，用文章脚本里登记的封面（manifest.cover）
+    if not args.cover and not args.cover_media_id and man.get("cover"):
+        args.cover = Path(man["cover"])
     if not (args.cover or args.cover_media_id):
-        print("--send 必须指定 --cover 或 --cover-media-id", file=sys.stderr)
+        print("--send 必须指定 --cover 或 --cover-media-id，或在文章脚本里写 cover / covers", file=sys.stderr)
         return 2
 
     token = get_token(*credentials(args.account))

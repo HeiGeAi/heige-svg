@@ -1,6 +1,6 @@
 {
   "name": "heige-svg",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "给公众号文章做会动的 SVG 配图，附 8 个场景模板、校验和抽帧工具",
   "type": "module",
   "private": true,

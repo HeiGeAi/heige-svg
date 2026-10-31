@@ -6,7 +6,9 @@
 
 写教程，有些过程光靠文字确实费劲。鼠标点了哪儿，命令怎么跑，数据怎么变，动起来就好讲多了。
 
-heige-svg 把这些过程做成 SVG 动画。你写正文、填数据、排时间轴，它负责生成配图和文章预览。要改一句话、换一个数字，改完脚本重新编译就行。
+heige-svg 把这些过程做成 SVG 动画。你写正文、填数据、排时间轴，它负责生成配图、公众号排版和文章预览。要改一句话、换一个数字，改完重新编译就行。
+
+正文也可以直接写 Markdown。代码块会排成「可复制」的提示词卡，编译后还会出一个发布台网页，一键复制标题、摘要、封面图和正文，粘进公众号后台。
 
 工具里放了 8 个常用场景：终端、界面点击、数据对比、流程分流、手机对话等。也附了 Claude Code skill，可以让它按文章内容选场景、写脚本、编译和检查。
 
@@ -17,7 +19,7 @@ heige-svg 把这些过程做成 SVG 动画。你写正文、填数据、排时�
   <img src="docs/demo/bar-race.svg" width="48%" alt="条形赛跑场景">
 </p>
 
-**先把边界说清楚：这还是一个实验项目。** 本地编译、校验、抽帧和 Chrome 手机宽度下的播放已验证。发布脚本只通过了本地模拟服务测试，**还没有向真实公众号发过草稿，也没有在手机微信里确认过播放**。草稿接口是否完整保留 SVG 动画，目前仍待验证。
+**先把边界说清楚：这还是一个实验项目。** 本地编译、校验、抽帧和 Chrome 手机宽度下的播放已验证，发布台的四个复制按钮在 Chrome 里实测能写入剪贴板。**正文粘进公众号编辑器后，SVG 动画和卡片样式能保留多少，还没有实测。**发布脚本只通过了本地模拟服务测试，**还没有向真实公众号发过草稿，也没有在手机微信里确认过播放**。草稿接口是否完整保留 SVG 动画，目前仍待验证。
 
 输出是内联 SVG + SMIL 动画和文章 HTML，适合用来研究公众号配图、做本地演示。要用于真实公众号，先用自己的测试稿走一遍草稿读取和手机预览。
 
@@ -38,6 +40,7 @@ npm run demo    # 编译示例文章并抽帧
 - `out/demo/preview.html`：手机宽度的文章预览，动画实时播放
 - `out/demo/qa/sheet.png`：每张图的抽帧总览
 - `out/demo/article.html`：文章正文 HTML，内含 SVG 动画
+- `out/demo/console.html`：发布台，一键复制标题、摘要、封面图、正文
 - `out/demo/fig*.svg`：各张配图的 SVG 源码
 
 在 macOS 上可以直接打开预览：
@@ -81,6 +84,47 @@ export default {
 node bin/build.mjs 我的文章.mjs out/我的文章   # 编译并校验
 node bin/qa.mjs out/我的文章                   # 抽帧检查
 ```
+
+## 直接写 Markdown
+
+不需要动图的文章，写一个 `.md` 直接编译：
+
+```bash
+node bin/build.mjs examples/markdown.md out/markdown
+open "$(pwd)/out/markdown/console.html"
+```
+
+开头可以用 `---` 写 `title`、`author`、`digest`、`cover`（封面路径，相对 .md 所在目录）。正文写法：
+
+| 写法 | 排出来 |
+|---|---|
+| `# 标题` | 文章标题 |
+| `## 小标题` | 小标题 |
+| 普通一行 | 段落，支持 `**加粗标红**`、行内代码 |
+| `- 项` / `> 引用` | 列表 / 引用 |
+| ```` ```prompt 卡片标题 ```` | 提示词卡：可复制标签、小标题圆点、编号悬挂缩进，`【填空】`标黄底 |
+| ```` ```say 卡片标题 ```` | 话术卡：左侧色条，一句示范 |
+| `[[图1]]` | 配图占位，要配合脚本使用 |
+
+要配动图时，正文仍写在 `.md` 里，脚本只管配图，见 [examples/markdown-figs.mjs](examples/markdown-figs.mjs)：
+
+```js
+import { fromMarkdown } from '../src/markdown.mjs';
+const { title, blocks } = fromMarkdown(md, { figs: { 1: { scene: 'barRace', meta, data } } });
+export default { title, digest: '摘要', covers: [{ label: '主封面', path: 'assets/cover.png' }], blocks };
+```
+
+脚本里也能直接写卡片块：`{ prompt: { title, text } }`、`{ say: { title, text } }`。卡片配色用文章级的 `cardTheme` 覆盖，默认纸白底加黄色，键名见 `src/cards.mjs` 的 `CARD_THEME`。
+
+## 发布台
+
+每次编译都会出 `console.html`：左边是标题、摘要（带字数）、封面，右边是手机宽度的正文预览，顶栏四个按钮：
+
+- **复制标题、复制摘要**：纯文本
+- **复制封面图**：PNG 写进剪贴板，在封面处直接粘贴（浏览器不允许时提示右键复制）
+- **复制正文**：同时写入富文本和纯文本，去公众号正文区粘贴
+
+封面写在文章脚本的 `covers`（可以多张，比如 2.35:1 主封面和 1:1 分享图）或 `cover` 里。发草稿时没给 `--cover`，`publish.py` 也会用这里登记的第一张。
 
 ## 场景模板
 
