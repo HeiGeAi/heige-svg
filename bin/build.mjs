@@ -1,0 +1,78 @@
+#!/usr/bin/env node
+// 用法：node bin/build.mjs <文章脚本.mjs> [输出目录]
+// 产出：figNN.svg、article.html（待上传）、preview.html（本地预览）、manifest.json
+import fs from 'node:fs';
+import path from 'node:path';
+import { pathToFileURL, fileURLToPath } from 'node:url';
+import { validate } from '../src/motion.mjs';
+import { SCENES } from '../src/scenes.mjs';
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const [src, outArg] = process.argv.slice(2);
+if (!src) { console.error('用法：node bin/build.mjs <文章脚本.mjs> [输出目录]'); process.exit(1); }
+const mod = await import(pathToFileURL(path.resolve(src)).href);
+const art = mod.default;
+const out = path.resolve(outArg ?? path.join(path.dirname(path.resolve(src)), 'out'));
+fs.mkdirSync(out, { recursive: true });
+
+const SANS = "'Noto Sans SC','PingFang SC','Microsoft YaHei',-apple-system,sans-serif";
+const SERIF = "'Noto Serif SC','Songti SC',STSong,Georgia,serif";
+const MONO = "'JetBrains Mono','SF Mono',Menlo,Consolas,monospace";
+const accent = art.accent ?? '#cf4436';
+const WRAP = 'overflow-wrap:break-word;';
+const P = `font-family:${SANS};font-size:15px;color:#4a4a45;line-height:1.9;margin:0 0 14px;${WRAP}`;
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+// 正文内联：**加粗标红**、`代码`
+const inline = (s) => esc(s)
+  .replace(/\*\*(.+?)\*\*/g, `<strong style="font-weight:700;color:${accent};">$1</strong>`)
+  .replace(/`(.+?)`/g, `<code style="font-family:${MONO};font-size:13.5px;color:#007aaa;background:rgba(26,26,24,0.06);padding:1px 5px;border-radius:3px;">$1</code>`);
+
+const errs = [], warns = [], figs = [];
+const htmlBlocks = [];
+let n = 0;
+for (const b of art.blocks) {
+  if (b.p) htmlBlocks.push(`<p style="${P}">${inline(b.p)}</p>`);
+  else if (b.h) htmlBlocks.push(`<hr style="border:0;border-top:1px solid rgba(120,120,112,0.18);height:0;margin:0 0 26px;" /><h2 style="font-family:${SERIF};font-size:22px;font-weight:700;line-height:1.4;color:${accent};margin:0 0 8px;${WRAP}">${esc(b.h)}</h2>`);
+  else if (b.ul) htmlBlocks.push(`<ul style="padding:0 0 0 22px;${P}">${b.ul.map((x) => `<li style="padding:0;margin:0 0 4px;">${inline(x)}</li>`).join('')}</ul>`);
+  else if (b.quote) htmlBlocks.push(`<section style="background:rgba(255,255,255,0.12);border-left:3px solid ${accent};padding:8px 20px;margin:0 0 24px;border-radius:0 6px 6px 0;"><p style="${P}margin:0;">${inline(b.quote)}</p></section>`);
+  else if (b.fig || b.scene) {
+    const fig = b.fig ? b.fig() : SCENES[b.scene](b.meta, b.data);
+    const svg = fig.toString();
+    const name = `fig${String(++n).padStart(2, '0')}`;
+    const v = validate(svg, name);
+    errs.push(...v.errs); warns.push(...v.warns, ...(fig.warn ?? []).map((w) => `${name}: ${w}`));
+    fs.writeFileSync(path.join(out, `${name}.svg`), svg);
+    figs.push({ name, title: fig.title, dur: fig.T, kb: +v.kb.toFixed(1) });
+    htmlBlocks.push(`<section style="margin:0 0 14px;max-width:100%;overflow:hidden;border-radius:6px;">${svg}</section>`);
+  }
+}
+const article = `<section style="background:rgba(26,26,24,0.02);max-width:640px;margin:0 auto;padding:24px 16px;${WRAP}">${htmlBlocks.join('')}</section>`;
+fs.writeFileSync(path.join(out, 'article.html'), article);
+
+// 素材：asset:名字 → 本地文件。发布时由 publish.py 换成微信图床地址
+const assetDirs = [path.join(out, '..', 'assets'), path.join(path.dirname(path.resolve(src)), 'assets'), path.join(here, '..', 'assets')];
+const assets = {};
+for (const m of article.matchAll(/asset:([\w.-]+)/g)) {
+  const nm = m[1];
+  if (assets[nm]) continue;
+  for (const d of assetDirs) for (const ext of ['.jpg', '.png', '.jpeg', '.gif']) {
+    const p = path.join(d, nm + ext);
+    if (!assets[nm] && fs.existsSync(p)) assets[nm] = p;
+  }
+  if (!assets[nm]) errs.push(`找不到素材 ${nm}`);
+}
+// 预览页把素材内联，放到哪里打开都不会裂图
+const dataUri = (p) => `data:image/${p.endsWith('.png') ? 'png' : p.endsWith('.gif') ? 'gif' : 'jpeg'};base64,${fs.readFileSync(p).toString('base64')}`;
+const toLocal = (h) => h.replace(/asset:([\w.-]+)/g, (_, nm) => (assets[nm] ? dataUri(assets[nm]) : ''));
+fs.writeFileSync(path.join(out, 'preview.html'), `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(art.title ?? '预览')}</title></head><body style="margin:0;background:#fff;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue','PingFang SC','Hiragino Sans GB','Microsoft YaHei',Arial,sans-serif"><div style="max-width:420px;margin:0 auto"><h1 style="font-size:22px;line-height:1.4;padding:20px 16px 0;margin:0">${esc(art.title ?? '')}</h1>${toLocal(article)}</div></body></html>`);
+const kb = Buffer.byteLength(article) / 1024;
+const chars = htmlBlocks.join('').replace(/<svg\b[\s\S]*?<\/svg>/g, '').replace(/<[^>]+>/g, '').length;
+// 实物文章最大 545KB；接口的真实上限官方没写清，超限会报 45002
+if (kb > 550) warns.push(`正文 ${kb.toFixed(0)}KB，超过实物文章的最大值 545KB，接口可能报 45002`);
+const manifest = { title: art.title, author: art.author, digest: art.digest, cover: art.cover, figs, assets, kb: +kb.toFixed(1), chars, charsPerFig: figs.length ? Math.round(chars / figs.length) : null };
+fs.writeFileSync(path.join(out, 'manifest.json'), JSON.stringify(manifest, null, 2));
+for (const w of warns) console.log('⚠', w);
+for (const e of errs) console.log('✗', e);
+console.log(`${figs.length} 张图，正文 ${kb.toFixed(0)}KB，文字 ${chars} 字，平均 ${manifest.charsPerFig} 字一张图 → ${out}`);
+figs.forEach((f) => console.log(`  ${f.name} ${f.dur}s ${f.kb}KB  ${f.title}`));
+process.exit(errs.length ? 1 : 0);

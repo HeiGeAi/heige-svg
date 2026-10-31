@@ -1,0 +1,11 @@
+node_modules/
+out/
+fonts/*.otf
+fonts/*.ttf
+.DS_Store
+asset-urls.*.json
+.env
+*.env
+.env.*
+__pycache__/
+*.pyc
