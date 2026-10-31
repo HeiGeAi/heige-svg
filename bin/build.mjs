@@ -36,7 +36,7 @@ const SERIF = "'Noto Serif SC','Songti SC',STSong,Georgia,serif";
 const MONO = "'JetBrains Mono','SF Mono',Menlo,Consolas,monospace";
 const accent = art.accent ?? '#cf4436';
 const WRAP = 'overflow-wrap:break-word;';
-const P = `font-family:${SANS};font-size:15px;color:#4a4a45;line-height:1.9;margin:0 0 14px;${WRAP}`;
+const P = `font-family:${SANS};font-size:15px;color:#4a4a45;line-height:28px;margin:0 0 14px;${WRAP}`;
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 // 正文内联：**加粗标红**、`代码`
 const inline = (s) => esc(s)
@@ -48,7 +48,7 @@ const htmlBlocks = [];
 let n = 0;
 for (const b of art.blocks) {
   if (b.p) htmlBlocks.push(`<p style="${P}">${inline(b.p)}</p>`);
-  else if (b.h) htmlBlocks.push(`<hr style="border:0;border-top:1px solid rgba(120,120,112,0.18);height:0;margin:0 0 26px;" /><h2 style="font-family:${SERIF};font-size:22px;font-weight:700;line-height:1.4;color:${accent};margin:0 0 8px;${WRAP}">${esc(b.h)}</h2>`);
+  else if (b.h) htmlBlocks.push(`<hr style="border:0;border-top:1px solid rgba(120,120,112,0.18);height:0;margin:0 0 26px;" /><h2 style="font-family:${SERIF};font-size:22px;font-weight:700;line-height:31px;color:${accent};margin:0 0 8px;${WRAP}">${esc(b.h)}</h2>`);
   else if (b.ul) htmlBlocks.push(`<ul style="padding:0 0 0 22px;${P}">${b.ul.map((x) => `<li style="padding:0;margin:0 0 4px;">${inline(x)}</li>`).join('')}</ul>`);
   else if (b.html) htmlBlocks.push(b.html);
   else if (b.prompt || b.code) htmlBlocks.push(promptCard({ title: '代码', ...(b.code ? { text: b.code } : b.prompt), theme: art.cardTheme }));
@@ -92,7 +92,9 @@ if (kb > 550) warns.push(`正文 ${kb.toFixed(0)}KB，超过实物文章的最�
 const covers = (art.covers ?? (art.cover ? [{ label: '封面', path: art.cover }] : [])).map((c) => ({ label: c.label ?? '封面', path: path.resolve(srcDir, c.path) }));
 for (const c of covers) if (!fs.existsSync(c.path)) errs.push(`找不到封面 ${c.path}`);
 const okCovers = covers.filter((c) => fs.existsSync(c.path));
-fs.writeFileSync(path.join(out, 'console.html'), makeConsole({ title: art.title, digest: art.digest, author: art.author, articleHtml: toLocal(article), covers: okCovers.map((c) => ({ label: c.label, uri: dataUri(c.path) })) }));
+// 粘贴版：公众号编辑器会清空 SVG 里内嵌数据的 <image>，配图的纸纹底换成同色纯色块（2026-11-01 实测）
+const pasteSafe = (h) => h.replace(/<image x="0" y="0" width="(\d+)" height="(\d+)"[^>]*href="asset:paper"[^>]*>(<\/image>)?/g, '<rect x="0" y="0" width="$1" height="$2" fill="#F4EFE5"></rect>');
+fs.writeFileSync(path.join(out, 'console.html'), makeConsole({ title: art.title, digest: art.digest, author: art.author, articleHtml: toLocal(pasteSafe(article)), covers: okCovers.map((c) => ({ label: c.label, uri: dataUri(c.path) })) }));
 const manifest = { title: art.title, author: art.author, digest: art.digest, cover: okCovers[0]?.path ?? art.cover, covers: okCovers, figs, assets, kb: +kb.toFixed(1), chars, charsPerFig: figs.length ? Math.round(chars / figs.length) : null };
 fs.writeFileSync(path.join(out, 'manifest.json'), JSON.stringify(manifest, null, 2));
 for (const w of warns) console.log('⚠', w);

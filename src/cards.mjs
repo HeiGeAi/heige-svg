@@ -1,4 +1,4 @@
-// 公众号正文卡片：提示词卡（可复制）、话术卡。只用内联样式，一行一个 <p>，不用 white-space:pre，
+// 公众号正文卡片：提示词卡（可复制）、话术卡。只用内联样式，一行一个 <p>，不用 white-space:pre，行高一律写像素（无单位会被公众号当成像素，判「行高异常」），
 // 粘进公众号编辑器后不会多出空行和大缩进。默认纸白底、墨黑字、黄点缀，和 paper 主题的配图同一套色。
 const SANS = "-apple-system,BlinkMacSystemFont,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif";
 
@@ -14,10 +14,10 @@ const fill = (s, c) => esc(s).replace(/【(.+?)】/g, `<span style="background:$
 
 function line(raw, gapBefore, c) {
   const s = raw.trimEnd();
-  const base = `margin:0;font-family:${SANS};font-size:14px;line-height:1.8;letter-spacing:0.3px;word-break:break-all;`;
+  const base = `margin:0;font-family:${SANS};font-size:14px;line-height:25px;letter-spacing:0.3px;word-break:break-all;`;
   const gap = gapBefore ? 'margin-top:10px;' : '';
   // 「什么时候派：」这类短句冒号收尾，当小标题
-  if (/^[^\d\s].{0,12}[：:]$/.test(s)) return `<p style="${base}${gap}font-weight:700;color:${c.ink};"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${c.accent};margin:0 8px 2px 0;vertical-align:middle;font-size:0;line-height:0;">.</span>${esc(s)}</p>`;
+  if (/^[^\d\s].{0,12}[：:]$/.test(s)) return `<p style="${base}${gap}font-weight:700;color:${c.ink};"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${c.accent};margin:0 8px 2px 0;vertical-align:middle;font-size:0;line-height:6px;">.</span>${esc(s)}</p>`;
   // 「1 内容」「1. 内容」编号行，悬挂缩进
   const m = s.match(/^(\d+)[.、]?\s+(.*)$/);
   if (m) return `<p style="${base}${gap}color:${c.sub};padding-left:22px;text-indent:-22px;"><span style="display:inline-block;width:22px;text-indent:0;color:${c.accentDeep};font-weight:700;">${m[1]}</span>${fill(m[2], c)}</p>`;
@@ -49,6 +49,6 @@ export function sayCard({ title = '这样说', text = '', theme } = {}) {
   const c = { ...CARD_THEME, ...theme };
   return `<section style="margin:6px 0 26px;padding:14px 16px;border-radius:10px;background:${c.paper};border:1px solid ${c.line};border-left:4px solid ${c.accent};">`
     + `<p style="margin:0 0 6px;font-family:${SANS};font-size:12px;font-weight:700;color:${c.mute};letter-spacing:1px;">${esc(title)}</p>`
-    + `<p style="margin:0;font-family:${SANS};font-size:15px;line-height:1.8;color:${c.ink};font-weight:600;">${fill(String(text).replace(/\n+/g, ''), c)}</p>`
+    + `<p style="margin:0;font-family:${SANS};font-size:15px;line-height:27px;color:${c.ink};font-weight:600;">${fill(String(text).replace(/\n+/g, ''), c)}</p>`
     + `</section>`;
 }
