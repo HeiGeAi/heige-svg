@@ -6,6 +6,7 @@ import path from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { validate } from '../src/motion.mjs';
 import { SCENES } from '../src/scenes.mjs';
+import { KIT } from '../src/kit/index.mjs';
 import { promptCard, sayCard } from '../src/cards.mjs';
 import { fromMarkdown } from '../src/markdown.mjs';
 import { makeConsole } from '../src/console.mjs';
@@ -37,6 +38,7 @@ const MONO = "'JetBrains Mono','SF Mono',Menlo,Consolas,monospace";
 const accent = art.accent ?? '#cf4436';
 const WRAP = 'overflow-wrap:break-word;';
 const P = `font-family:${SANS};font-size:15px;color:#4a4a45;line-height:28px;margin:0 0 14px;${WRAP}`;
+const dataUri = (p) => `data:image/${p.endsWith('.png') ? 'png' : p.endsWith('.gif') ? 'gif' : 'jpeg'};base64,${fs.readFileSync(p).toString('base64')}`;
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 // 正文内联：**加粗标红**、`代码`
 const inline = (s) => esc(s)
@@ -54,8 +56,15 @@ for (const b of art.blocks) {
   else if (b.prompt || b.code) htmlBlocks.push(promptCard({ title: '代码', ...(b.code ? { text: b.code } : b.prompt), theme: art.cardTheme }));
   else if (b.say) htmlBlocks.push(sayCard({ ...b.say, theme: art.cardTheme }));
   else if (b.quote) htmlBlocks.push(`<section style="background:rgba(255,255,255,0.12);border-left:3px solid ${accent};padding:8px 20px;margin:0 0 24px;border-radius:0 6px 6px 0;"><p style="${P}margin:0;">${inline(b.quote)}</p></section>`);
-  else if (b.fig || b.scene) {
-    const fig = b.fig ? b.fig() : SCENES[b.scene](b.meta, b.data);
+  else if (b.img) {
+    // 本地图片内嵌成 base64：本地路径粘进公众号会被清空，内嵌的会被自动转存到公众号图床（heige-gzh-publish 实测）
+    const p = path.resolve(srcDir, b.img.src);
+    if (!fs.existsSync(p)) errs.push(`找不到图片 ${b.img.src}`);
+    else { const kbI = fs.statSync(p).size / 1024; if (kbI > 1024) warns.push(`图片 ${b.img.src} ${kbI.toFixed(0)}KB，超过公众号正文图片 1MB 上限，先压成 jpg`); htmlBlocks.push(`<p style="margin:0 0 24px;text-align:center;"><img src="${dataUri(p)}" alt="${esc(b.img.alt ?? '')}" style="width:100%;display:block;" /></p>`); }
+  }
+  else if (b.fig || b.scene || b.kit) {
+    if (b.kit && !KIT[b.kit]) { errs.push(`没有这个夜空场景：${b.kit}`); continue; }
+    const fig = b.fig ? b.fig() : b.kit ? KIT[b.kit](b.meta, b.data) : SCENES[b.scene](b.meta, b.data);
     const svg = fig.toString();
     const name = `fig${String(++n).padStart(2, '0')}`;
     const v = validate(svg, name);
@@ -81,7 +90,6 @@ for (const m of article.matchAll(/asset:([\w.-]+)/g)) {
   if (!assets[nm]) errs.push(`找不到素材 ${nm}`);
 }
 // 预览页把素材内联，放到哪里打开都不会裂图
-const dataUri = (p) => `data:image/${p.endsWith('.png') ? 'png' : p.endsWith('.gif') ? 'gif' : 'jpeg'};base64,${fs.readFileSync(p).toString('base64')}`;
 const toLocal = (h) => h.replace(/asset:([\w.-]+)/g, (_, nm) => (assets[nm] ? dataUri(assets[nm]) : ''));
 fs.writeFileSync(path.join(out, 'preview.html'), `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(art.title ?? '预览')}</title></head><body style="margin:0;background:#fff;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue','PingFang SC','Hiragino Sans GB','Microsoft YaHei',Arial,sans-serif"><div style="max-width:420px;margin:0 auto"><h1 style="font-size:22px;line-height:1.4;padding:20px 16px 0;margin:0">${esc(art.title ?? '')}</h1>${toLocal(article)}</div></body></html>`);
 const kb = Buffer.byteLength(article) / 1024;

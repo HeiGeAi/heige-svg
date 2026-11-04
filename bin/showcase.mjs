@@ -20,3 +20,12 @@ for (const [from, to] of [['fig01', 'terminal'], ['fig04', 'pipeline'], ['fig05'
   fs.writeFileSync(path.join(docs, `${to}.svg`), svg);
   console.log(`${to}.svg ${(Buffer.byteLength(svg) / 1024).toFixed(0)}KB`);
 }
+
+// 夜空视觉包：没有纸纹素材，只补字体
+const nightOut = path.join(root, 'out', 'showcase-night');
+execFileSync('node', [path.join(root, 'bin/build.mjs'), path.join(root, 'examples/night.mjs'), nightOut], { stdio: 'ignore' });
+for (const [from, to] of [['fig02', 'night-gauge'], ['fig05', 'night-duel'], ['fig16', 'night-belt'], ['fig20', 'night-infect']]) {
+  const svg = fs.readFileSync(path.join(nightOut, `${from}.svg`), 'utf8').replace('<svg ', `<svg font-family="${STACK}" `);
+  fs.writeFileSync(path.join(docs, `${to}.svg`), svg);
+  console.log(`${to}.svg ${(Buffer.byteLength(svg) / 1024).toFixed(0)}KB`);
+}

@@ -59,6 +59,10 @@ python3 bin/publish.py <输出目录> --account <别名> --cover <封面>
 
 配色用 `meta.theme`：`paper`（默认，暖纸底红强调）、`mono`（黑白，OpenAI 类）、`amber`（深色琥珀）、`blue`（蓝）。纸底不变，内容 UI 跟随被讲产品的品牌色。
 
+## 夜空视觉包（讲道理、讲方法论的文章优先用）
+
+脚本块写 `{ kit: '场景名', meta: { tag, part, title, hl, foot }, data }`。一篇文章所有图用同一个 `tag`（如「系列名 01」），`hl` 是标题里要标黄的词。场景和 data 字段见 README「夜空视觉包」表，18 个场景的完整写法照抄 `examples/night.mjs`。选场景按道理的形状：等级用 `gauge`/`ladder`，瓶颈用 `funnel`，两种做法对比用 `duel`，分拣用 `router`，流程能不能叫停用 `belt`，排序用 `pyramid`，规矩清单用 `tiles`。本地截图写 `![说明](路径)`，编译时内嵌，粘进公众号会转存图床；单张超过 1MB 先压成 jpg。
+
 ## 红线
 
 - 只用 `g/path/rect/circle/line/text/image/animate/animateTransform/desc`；只动 `opacity` 和 `transform`。`bin/build.mjs` 会拦截违规

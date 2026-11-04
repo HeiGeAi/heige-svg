@@ -8,13 +8,20 @@ Clicks, terminal commands, and changing data can be easier to explain in motion.
 
 You can also write the article in Markdown. Code fences become copyable prompt cards, and every build produces a publishing console page with one-click copy for the title, digest, cover image, and body.
 
-The toolkit includes eight scene templates, output validation, frame capture, an experimental draft publisher, and a Claude Code skill for choosing scenes and building illustrations from an article.
+The toolkit includes eight scene templates, a **night kit** of 18 storytelling scenes (since 0.3.0), output validation, frame capture, an experimental draft publisher, and a Claude Code skill for choosing scenes and building illustrations from an article.
 
 <p>
   <img src="docs/demo/terminal.svg" width="48%" alt="Terminal scene">
   <img src="docs/demo/ui-click.svg" width="48%" alt="UI interaction scene">
   <img src="docs/demo/pipeline.svg" width="48%" alt="Pipeline scene">
   <img src="docs/demo/bar-race.svg" width="48%" alt="Bar chart scene">
+</p>
+
+<p>
+  <img src="docs/demo/night-gauge.svg" width="48%" alt="Night kit: gauge">
+  <img src="docs/demo/night-duel.svg" width="48%" alt="Night kit: duel">
+  <img src="docs/demo/night-belt.svg" width="48%" alt="Night kit: conveyor belt">
+  <img src="docs/demo/night-infect.svg" width="48%" alt="Night kit: spreading grid">
 </p>
 
 **This is an experimental project.** Local compilation, validation, frame capture, and playback in Chrome at a mobile viewport have been checked, and the four copy buttons of the publishing console write to the clipboard in Chrome. **Tested on 2026-11-01: body copied from the console and pasted into the WeChat editor kept all five SVG animations (76 animation tags) and the prompt cards after saving and reopening the draft.** Two fixes came out of it: unitless line-heights are flagged by the editor, so all line-heights are now in pixels; data-URI `<image>` backgrounds inside SVG are stripped, so the console uses a solid background instead. **Playback inside the mobile WeChat app has not been confirmed; preview on a phone before publishing.** The publishing script has only been tested against a local mock service. **No draft has been sent to a real WeChat Official Account, and playback inside the mobile WeChat app has not been verified.** Whether the draft API preserves all SVG animation remains unknown.
@@ -96,6 +103,14 @@ open "$(pwd)/out/markdown/console.html"
 Optional front matter between `---` lines sets `title`, `author`, `digest`, and `cover`. In the body, `## ` is a subheading, `- ` a list, `> ` a quote, ```` ```prompt Title ```` a copyable prompt card (`【…】` placeholders are highlighted), ```` ```say Title ```` a one-line script card, and `[[图1]]` a figure placeholder. To combine Markdown with animated figures, use `fromMarkdown(md, { figs })` from `src/markdown.mjs`; see [examples/markdown-figs.mjs](examples/markdown-figs.mjs). Scripts can also use `{ prompt: { title, text } }` and `{ say: { title, text } }` blocks, with colors overridden by `cardTheme`.
 
 Every build writes `console.html`: title and digest with character counts, cover images from `covers` or `cover`, and a phone-width preview. Its buttons copy the title and digest as text, the cover as a PNG image, and the body as both HTML and plain text. `publish.py` falls back to the first registered cover when `--cover` is omitted.
+
+## Night kit
+
+For articles that explain ideas rather than products, the night kit gives each idea its own picture: a gauge for levels, a checkpoint for bottlenecks, a left-versus-right duel for two approaches, a conveyor belt for stages that can stop the line, an inverted pyramid for rankings. Every figure shares one frame (series tag, a highlighted keyword in the title, a footer line) on a deep indigo night sky, with a potato robot as the recurring character, plus stamps, confetti bursts and small self-looping motions. No green anywhere.
+
+Use `{ kit: 'name', meta: { tag, part, title, hl, foot }, data }` in an article script. All 18 scenes are in [examples/night.mjs](examples/night.mjs); `npm run night` builds and frame-checks them. Scene list and data fields are in the Chinese README. The palette, the robot (`bot()`) and helpers live in `src/kit/core.mjs`. Titles use Noto Sans SC converted to paths; `npm run fonts` downloads it.
+
+Markdown input now also accepts `![alt](path)` (local images are embedded as base64 so the WeChat editor re-hosts them instead of dropping them) and converts Feishu-style `<b><font color="red">…</font></b>` into highlighted bold.
 
 ## Experimental draft publishing
 
