@@ -3,11 +3,15 @@
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const len = (s) => [...String(s ?? '')].length;
 
-// covers：[{ label, uri }]，uri 是 data: 地址
+// covers：[{ label, uri }]，uri 是 data: 地址。公众号只有一张 2.35:1 主封面，只展示第一张，
+// 下面附一个 1:1 转发卡预览：转发卡是后台从主封面裁的，拖滑块看裁剪框放哪里合适
 export function makeConsole({ title = '', digest = '', author = '', articleHtml, covers = [] }) {
-  const coverCards = covers.map((c, i) => `
+  const coverCards = covers.slice(0, 1).map((c, i) => `
     <div class="cover"><img id="cover${i}" src="${c.uri}" alt="${esc(c.label)}">
-      <div class="row"><span class="label">${esc(c.label)}</span><button data-copy-img="cover${i}">复制封面图</button></div></div>`).join('');
+      <div class="row"><span class="label">${esc(c.label)}（2.35:1）</span><button data-copy-img="cover${i}">复制封面图</button></div></div>
+    <div class="share"><div class="sq" id="sq" style="background-image:url('${c.uri}')"></div>
+      <div><p class="tip">转发卡 1:1 不能单独上传，是后台从主封面里裁的。拖滑块找一个能单独看懂的位置，上传封面后在后台把裁剪框拖到同样的地方。</p>
+      <input type="range" id="sqpos" min="0" max="100" value="50"><span class="label" id="sqval">居中</span></div></div>`).join('');
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>发布台 · ${esc(title)}</title>
 <style>
@@ -26,7 +30,7 @@ button:hover{filter:brightness(.95)}
 .row{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .count{font-size:12px;color:#8F887D}.count.over{color:#CF4436;font-weight:700}
 .cover img{width:100%;border-radius:8px;border:1px solid #E4DFD3;display:block;margin-bottom:8px}
-.cover+.cover{margin-top:14px}
+.share{display:flex;gap:12px;align-items:center;margin-top:12px}.sq{flex:0 0 120px;height:120px;border-radius:8px;border:1px solid #E4DFD3;background-size:auto 100%;background-position:50% 50%;background-repeat:no-repeat}.share input{width:100%}
 .label{font-size:12px;color:#8F887D}
 .phone{width:420px;max-width:100%;background:#fff;border-radius:18px;box-shadow:0 10px 40px rgba(30,28,25,.15);overflow:hidden}
 .phone .tt{padding:22px 16px 0;font-size:22px;line-height:1.4;font-weight:700}
@@ -68,6 +72,8 @@ document.querySelectorAll('[data-copy-img]').forEach((b) => b.onclick = async ()
     toast('已复制封面图');
   } catch { toast('浏览器不让直接复制图片，请右键封面图选复制图片'); }
 });
+const sq = document.getElementById('sqpos');
+if (sq) sq.oninput = () => { document.getElementById('sq').style.backgroundPosition = sq.value + '% 50%'; document.getElementById('sqval').textContent = sq.value < 10 ? '最左' : sq.value > 90 ? '最右' : sq.value == 50 ? '居中' : sq.value + '%'; };
 document.getElementById('copyBody').onclick = async () => {
   const node = document.getElementById('article');
   try {

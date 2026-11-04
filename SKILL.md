@@ -22,7 +22,7 @@ description: 给公众号文章做会动的配图和一键排版，把正文、�
 - 正文写成 Markdown，配图位放 `[[图1]]`，脚本只定义配图，照抄 `examples/markdown-figs.mjs`（`fromMarkdown(md, { figs })`）。没有配图的文章直接编译 `.md`，见 `examples/markdown.md`。
 - 全部写在 `xxx.mjs` 里，照抄 `examples/demo.mjs`。
 
-优先用现成模板，模板表达不了再用底层动效写（见 `docs/writing-scenes.md`）。提示词、命令、清单一律用卡片：Markdown 里写 ```` ```prompt 卡片标题 ````（话术用 ```` ```say 卡片标题 ````），脚本里写 `{ prompt: { title, text } }`；要读者替换的内容写成 `【填你的…】`，会标黄底。封面写进 `covers: [{ label, path }]`，发布台和 publish.py 都会用。
+优先用现成模板，模板表达不了再用底层动效写（见 `docs/writing-scenes.md`）。提示词、命令、清单一律用卡片：Markdown 里写 ```` ```prompt 卡片标题 ````（话术用 ```` ```say 卡片标题 ````），脚本里写 `{ prompt: { title, text } }`；要读者替换的内容写成 `【填你的…】`，会标黄底。封面写进 `covers: [{ label, path }]`，**只登记一张 2.35:1 主封面**：公众号没有单独的转发卡，1:1 是后台从主封面裁的，发布台里有裁剪预览。正文图片写 `![说明](路径)` 或在 html 块里写本地路径都行，编译时内嵌成 base64，粘进公众号会转存图床；本地路径不内嵌会被编辑器清空。引用别人的帖子用 `node bin/xcard.mjs 配置.json 输出目录` 出原帖卡，数字照原帖如实填。
 
 **4. 编译。**
 ```bash

@@ -1,0 +1,27 @@
+{
+  "_说明": "原帖卡示例配置。真实使用时照原帖页面如实填写原文、日期和数字，路径相对本文件；没有头像就显示名字首字母",
+  "theme": "night",
+  "label": "原帖",
+  "transLabel": "译文",
+  "cards": [
+    {
+      "out": "xcard-01.jpg",
+      "name": "example",
+      "handle": "@your_handle",
+      "date": "2026-11-05",
+      "text": "this is where the original post goes.\n\n> line breaks are kept",
+      "translation": "这里放你的翻译，一般一两句就够。",
+      "stats": [["浏览", "1.2 万"], ["点赞", "860"]]
+    },
+    {
+      "out": "xcard-02.jpg",
+      "name": "example",
+      "handle": "@your_handle",
+      "date": "2026-11-05",
+      "text": "posts with a screenshot keep the image under the text.",
+      "media": "assets/cover.png",
+      "translation": "带截图的帖子，截图放在原文下面。",
+      "stats": [["浏览", "3.4 万"], ["点赞", "1520"]]
+    }
+  ]
+}

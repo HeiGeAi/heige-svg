@@ -104,6 +104,12 @@ Optional front matter between `---` lines sets `title`, `author`, `digest`, and 
 
 Every build writes `console.html`: title and digest with character counts, cover images from `covers` or `cover`, and a phone-width preview. Its buttons copy the title and digest as text, the cover as a PNG image, and the body as both HTML and plain text. `publish.py` falls back to the first registered cover when `--cover` is omitted.
 
+Register **one 2.35:1 main cover** (1880×800 recommended). WeChat Official Accounts accept only this one cover; the 1:1 share card is cropped from it in the editor and cannot be uploaded separately. The console shows a 1:1 crop preview with a slider so you can pick a position, and the build warns about extra covers or a wrong ratio.
+
+Two more paste issues are handled at build time: local `<img>` paths (Markdown `![alt](path)` or hand-written `html` blocks) are embedded as base64 because the editor drops local files but re-hosts embedded images (images over 1MB are flagged); Feishu-style `<b><font color="red">` is converted to highlighted bold.
+
+`bin/xcard.mjs` turns a social post into a quote card image (avatar, handle, date, original text, translation, media, view and like counts), 1080 px wide and under 1MB, from a JSON config such as [examples/xcard.json](examples/xcard.json). Fill in the text and numbers exactly as they appear on the original post.
+
 ## Night kit
 
 For articles that explain ideas rather than products, the night kit gives each idea its own picture: a gauge for levels, a checkpoint for bottlenecks, a left-versus-right duel for two approaches, a conveyor belt for stages that can stop the line, an inverted pyramid for rankings. Every figure shares one frame (series tag, a highlighted keyword in the title, a footer line) on a deep indigo night sky, with a potato robot as the recurring character, plus stamps, confetti bursts and small self-looping motions. No green anywhere.
