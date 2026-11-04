@@ -1,6 +1,6 @@
 {
   "name": "heige-svg",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "给公众号文章做会动的 SVG 配图，附 8 个场景模板、18 个夜空视觉场景、校验和抽帧工具",
   "type": "module",
   "private": true,
@@ -11,6 +11,7 @@
     "demo": "node bin/build.mjs examples/demo.mjs out/demo && node bin/qa.mjs out/demo",
     "night": "node bin/build.mjs examples/night.mjs out/night && node bin/qa.mjs out/night",
     "showcase": "node bin/showcase.mjs",
+    "xcard": "node bin/xcard.mjs examples/xcard.json out/xcard",
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": { "opentype.js": "1.3.4", "playwright-core": "1.50.0" }

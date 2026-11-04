@@ -10,6 +10,7 @@ import { KIT } from '../src/kit/index.mjs';
 import { promptCard, sayCard } from '../src/cards.mjs';
 import { fromMarkdown } from '../src/markdown.mjs';
 import { makeConsole } from '../src/console.mjs';
+import { inlineLocalImages, checkCovers, dataUri } from '../src/images.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const [src, outArg] = process.argv.slice(2);
@@ -38,7 +39,6 @@ const MONO = "'JetBrains Mono','SF Mono',Menlo,Consolas,monospace";
 const accent = art.accent ?? '#cf4436';
 const WRAP = 'overflow-wrap:break-word;';
 const P = `font-family:${SANS};font-size:15px;color:#4a4a45;line-height:28px;margin:0 0 14px;${WRAP}`;
-const dataUri = (p) => `data:image/${p.endsWith('.png') ? 'png' : p.endsWith('.gif') ? 'gif' : 'jpeg'};base64,${fs.readFileSync(p).toString('base64')}`;
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 // 正文内联：**加粗标红**、`代码`
 const inline = (s) => esc(s)
@@ -74,7 +74,10 @@ for (const b of art.blocks) {
     htmlBlocks.push(`<section style="margin:0 0 14px;max-width:100%;overflow:hidden;border-radius:6px;">${svg}</section>`);
   }
 }
-const article = `<section style="background:rgba(26,26,24,0.02);max-width:640px;margin:0 auto;padding:24px 16px;${WRAP}">${htmlBlocks.join('')}</section>`;
+// html 块里手写的 <img src="本地路径"> 也一并内嵌，否则粘进公众号是空白
+const inl = inlineLocalImages(`<section style="background:rgba(26,26,24,0.02);max-width:640px;margin:0 auto;padding:24px 16px;${WRAP}">${htmlBlocks.join('')}</section>`, srcDir);
+errs.push(...inl.errs); warns.push(...inl.warns);
+const article = inl.html;
 fs.writeFileSync(path.join(out, 'article.html'), article);
 
 // 素材：asset:名字 → 本地文件。发布时由 publish.py 换成微信图床地址
@@ -100,9 +103,10 @@ if (kb > 550) warns.push(`正文 ${kb.toFixed(0)}KB，超过实物文章的最�
 const covers = (art.covers ?? (art.cover ? [{ label: '封面', path: art.cover }] : [])).map((c) => ({ label: c.label ?? '封面', path: path.resolve(srcDir, c.path) }));
 for (const c of covers) if (!fs.existsSync(c.path)) errs.push(`找不到封面 ${c.path}`);
 const okCovers = covers.filter((c) => fs.existsSync(c.path));
+warns.push(...checkCovers(okCovers));
 // 粘贴版：公众号编辑器会清空 SVG 里内嵌数据的 <image>，配图的纸纹底换成同色纯色块（2026-11-01 实测）
 const pasteSafe = (h) => h.replace(/<image x="0" y="0" width="(\d+)" height="(\d+)"[^>]*href="asset:paper"[^>]*>(<\/image>)?/g, '<rect x="0" y="0" width="$1" height="$2" fill="#F4EFE5"></rect>');
-fs.writeFileSync(path.join(out, 'console.html'), makeConsole({ title: art.title, digest: art.digest, author: art.author, articleHtml: toLocal(pasteSafe(article)), covers: okCovers.map((c) => ({ label: c.label, uri: dataUri(c.path) })) }));
+fs.writeFileSync(path.join(out, 'console.html'), makeConsole({ title: art.title, digest: art.digest, author: art.author, articleHtml: toLocal(pasteSafe(article)), covers: okCovers.slice(0, 1).map((c) => ({ label: c.label, uri: dataUri(c.path) })) }));
 const manifest = { title: art.title, author: art.author, digest: art.digest, cover: okCovers[0]?.path ?? art.cover, covers: okCovers, figs, assets, kb: +kb.toFixed(1), chars, charsPerFig: figs.length ? Math.round(chars / figs.length) : null };
 fs.writeFileSync(path.join(out, 'manifest.json'), JSON.stringify(manifest, null, 2));
 for (const w of warns) console.log('⚠', w);
