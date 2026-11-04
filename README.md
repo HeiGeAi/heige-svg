@@ -10,13 +10,20 @@ heige-svg 把这些过程做成 SVG 动画。你写正文、填数据、排时�
 
 正文也可以直接写 Markdown。代码块会排成「可复制」的提示词卡，编译后还会出一个发布台网页，一键复制标题、摘要、封面图和正文，粘进公众号后台。
 
-工具里放了 8 个常用场景：终端、界面点击、数据对比、流程分流、手机对话等。也附了 Claude Code skill，可以让它按文章内容选场景、写脚本、编译和检查。
+工具里放了 8 个常用场景：终端、界面点击、数据对比、流程分流、手机对话等。0.3.0 起多了一套**夜空视觉包**：18 个讲道理的场景，深靛夜空底，土豆机器人当主角，印章、彩纸、循环小动作都是现成的。也附了 Claude Code skill，可以让它按文章内容选场景、写脚本、编译和检查。
 
 <p>
   <img src="docs/demo/terminal.svg" width="48%" alt="终端场景">
   <img src="docs/demo/ui-click.svg" width="48%" alt="界面点击场景">
   <img src="docs/demo/pipeline.svg" width="48%" alt="流水线场景">
   <img src="docs/demo/bar-race.svg" width="48%" alt="条形赛跑场景">
+</p>
+
+<p>
+  <img src="docs/demo/night-gauge.svg" width="48%" alt="夜空：仪表盘">
+  <img src="docs/demo/night-duel.svg" width="48%" alt="夜空：左右对决">
+  <img src="docs/demo/night-belt.svg" width="48%" alt="夜空：传送带">
+  <img src="docs/demo/night-infect.svg" width="48%" alt="夜空：病毒格">
 </p>
 
 **先把边界说清楚：这还是一个实验项目。** 本地编译、校验、抽帧和 Chrome 手机宽度下的播放已验证，发布台的四个复制按钮在 Chrome 里实测能写入剪贴板。**2026-11-01 实测：发布台复制的正文粘进公众号编辑器、存草稿再打开，5 张 SVG 动图（76 个动画标签）和提示词卡全部保留。** 踩到两个坑已修：行高写无单位数字会被判「行高异常」，现在一律写像素；SVG 里内嵌数据的底纹图会被清空，发布台里配图底纹改成同色纯色块。**手机微信里的实际播放还没确认，发表前用手机预览看一眼。**发布脚本只通过了本地模拟服务测试，**还没有向真实公众号发过草稿，也没有在手机微信里确认过播放**。草稿接口是否完整保留 SVG 动画，目前仍待验证。
@@ -104,6 +111,8 @@ open "$(pwd)/out/markdown/console.html"
 | `- 项` / `> 引用` | 列表 / 引用 |
 | ```` ```prompt 卡片标题 ```` | 提示词卡：可复制标签、小标题圆点、编号悬挂缩进，`【填空】`标黄底 |
 | ```` ```say 卡片标题 ```` | 话术卡：左侧色条，一句示范 |
+| `![说明](图片路径)` | 本地图片，编译时内嵌成 base64，粘进公众号会自动转存到图床（本地路径的图片粘贴后会被清空） |
+| `<b><font color="red">金句</font></b>` | 飞书文档的红字写法，自动转成标红加粗，从飞书搬来的稿子不用改 |
 | `[[图1]]` | 配图占位，要配合脚本使用 |
 
 要配动图时，正文仍写在 `.md` 里，脚本只管配图，见 [examples/markdown-figs.mjs](examples/markdown-figs.mjs)：
@@ -140,6 +149,47 @@ export default { title, digest: '摘要', covers: [{ label: '主封面', path: '
 | `rankCards` | 多组榜单、数据卡 |
 
 配色用 `meta.theme`：`paper`（默认）、`mono`、`amber`、`blue`，也可以在 `src/motion.mjs` 的 `THEMES` 里加自己的。
+
+## 夜空视觉包
+
+讲方法论、讲道理的文章，用纸底模板容易显得像 PPT。夜空视觉包每个场景都给道理配了一个画面：讲等级用仪表盘，讲瓶颈用关卡，讲做法对比用左右对决。一篇文章里所有图共用一个画框（左上角系列标签、标题里一个词标黄加波浪线、底栏一句话），视觉自然统一。
+
+脚本里写 `{ kit: '场景名', meta, data }`：
+
+```js
+{ kit: 'duel',
+  meta: { tag: '我的系列 01', part: '第二招', title: '你先说了猜测，它就顺着去凑', hl: '顺着去凑',
+          foot: [{ t: '先让它读完，' }, { t: '再说它的看法', b: true }] },
+  data: { left:  { title: '你先亮出猜测', art: 'guess',   lines: ['它顺着你找证据'], verdict: '✗ 带偏了' },
+          right: { title: '先让它读完对话', art: 'readall', lines: ['大白话说看法'],   verdict: '✓ 有新发现' } } }
+```
+
+18 个场景全在 [examples/night.mjs](examples/night.mjs) 里，`node bin/build.mjs examples/night.mjs out/night` 编译后打开 `out/night/preview.html` 就能挨个看。
+
+| 场景 | 讲什么 | data |
+|---|---|---|
+| `islands` | 路线、系列目录：机器人在小岛间跳，到站插旗 | `items:[{k,name,note}]` |
+| `gauge` | 等级：仪表盘指针一级级走，右边亮起的方阵越来越多 | `levels:[{k,name,note}], counts`；meta 可加 `countLabels, countCap` |
+| `funnel` | 瓶颈：步骤卡在「你」这一关越堆越高，有一张绕过你 | `task, stuck:[], free, freeLabel, waitLabel` |
+| `kitchen3` | 三种状态对比，中间那格最乱 | `panels:[{title,who,state,note}]`（3 个） |
+| `duel` | 两种做法左右对决，各盖一个章 | `left/right:{title, art, lines, verdict}`，art 见下 |
+| `router` | 门口分拣：要处理的送进去，没用的扔掉 | `items:[{tag, to:0\|1}]` |
+| `tiles` | 2 到 4 条规矩，每张卡一个会动的图标 | `cards:[{title, body, icon, tag, hero}]`，icon 见下 |
+| `chat` | 对话：`restate` 让 AI 复述，`book` 先给方案再点头 | 见 examples/night.mjs |
+| `ladder` | 台阶一级级升起，机器人往上跳 | `steps:[{k,name,note}], badge` |
+| `handoff` | 同一件事你出手越来越少（柱子从 100% 降到 ✓） | `stages:[{k,name,note,you}]` |
+| `workbench` | 左边终端打字勾清单，右边齿轮、放大镜或造工具 | `prompt, steps:[{label,note}], done, art: gears\|magnify\|build` |
+| `hub` | 你 → 总入口 → 各个 bot，信封一封封送出去 | `sats:[{name,note,prop}], center, centerNote, who` |
+| `bars` | 次数对比：时钟转速不同，条形加数字滚动 | `rows:[{name,value,label,spin,hero}], max` |
+| `road` | 一条路分三段，高亮两头 | `segs:[{name,do,note,hot}]`（3 段） |
+| `belt` | 传送带：一路走完（可加倒计时），或在某站被叫停 | `stations:[{name,note}], items:[{tag, stopAt, why}], timer, endLabel` |
+| `quiz` | 几个问题逐个答出来，锁才打开 | `items:[{q,a}], unlock` |
+| `pyramid` | 四档排序，越往上越靠谱 | `layers:[{k,name,change}], side` |
+| `infect` | 一格坏了传遍全图，另一边冒头就拔 | `left, right` |
+
+`duel` 的插画（art）：`ask` `brief` `scatter` `target` `guess` `readall` `pile` `page` `juggle` `conduct` `fire` `jar` `claim` `proof` `manual`。`tiles` 的图标（icon）：`target` `mic` `ban` `toolbox` `doc` `one` `key` `bell` `share` `heart` `lazy` `bolt` `boss` `sleep` `crown`。
+
+配色、角色和小部件在 `src/kit/core.mjs`：`P` 是色板（不含绿色），`bot()` 是土豆机器人（表情 `happy` `joy` `sad` `x` `sleep`，道具 `headset` `paper` `clip` `wrench` `magnifier` 等），`stamp()` 盖章、`burst()` 彩纸、`ping()` 波纹、`loopT/loopO/loopS/loopR` 是不跟主时间轴、自己循环的小动作。标题和标签用思源黑体转路径，`npm run fonts` 会一起下载。示例一次放 20 张图所以正文超过 545KB，真实文章 8 张左右正好。
 
 模板不够时，用底层动效自己拼（打字机、光标、波纹、扫描线、数字滚动、序列帧等），见 [docs/writing-scenes.md](docs/writing-scenes.md) 和 [examples/primitives.mjs](examples/primitives.mjs)。
 

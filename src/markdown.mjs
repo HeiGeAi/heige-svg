@@ -4,11 +4,13 @@
 //   普通段落（单行）  → { p }，支持 **加粗标红**、`代码`
 //   - 列表项          → { ul }
 //   > 引用            → { quote }
-//   [[图N]]           → figs[N]（场景对象或 { fig }）
+//   [[图N]]           → figs[N]（场景对象、{ kit } 或 { fig }）
+//   ![说明](图片路径) → { img }，编译时内嵌成 base64，粘进公众号会转存到图床
+//   <b><font color="red">金句</font></b>（飞书写法）→ 自动转成 **金句**
 //   ```prompt 标题    → 提示词卡（```card 同义；不写类型的 ``` 也按提示词卡处理，标题为「代码」）
 //   ```say 标题       → 话术卡
 export function fromMarkdown(md, { figs = {} } = {}) {
-  const lines = String(md).replace(/\r\n/g, '\n').split('\n');
+  const lines = String(md).replace(/\r\n/g, '\n').replace(/<b><font color="red">([\s\S]*?)<\/font><\/b>/g, '**$1**').split('\n');
   const blocks = [];
   let title;
   for (let i = 0; i < lines.length; i++) {
@@ -33,6 +35,8 @@ export function fromMarkdown(md, { figs = {} } = {}) {
       blocks.push(f);
       continue;
     }
+    const im = l.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+    if (im) { blocks.push({ img: { alt: im[1], src: im[2] } }); continue; }
     if (l.startsWith('> ')) { blocks.push({ quote: l.slice(2).trim() }); continue; }
     if (/^[-*] /.test(l)) {
       const items = [l.slice(2).trim()];

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// 下载标题衬线和终端等宽字体（都是 OFL 授权），版本固定，已存在就跳过
+// 下载标题衬线、夜空视觉包用的黑体和终端等宽字体（都是 OFL 授权），版本固定，已存在就跳过
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,6 +7,8 @@ import { fileURLToPath } from 'node:url';
 const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'fonts');
 const FONTS = {
   'NotoSerifSC-Bold.otf': 'https://github.com/notofonts/noto-cjk/raw/Serif2.003/Serif/SubsetOTF/SC/NotoSerifSC-Bold.otf',
+  'NotoSansSC-Black.otf': 'https://github.com/notofonts/noto-cjk/raw/Sans2.004/Sans/SubsetOTF/SC/NotoSansSC-Black.otf',
+  'NotoSansSC-Bold.otf': 'https://github.com/notofonts/noto-cjk/raw/Sans2.004/Sans/SubsetOTF/SC/NotoSansSC-Bold.otf',
   'JetBrainsMono-Medium.ttf': 'https://github.com/JetBrains/JetBrainsMono/raw/v2.304/fonts/ttf/JetBrainsMono-Medium.ttf',
   'JetBrainsMono-Bold.ttf': 'https://github.com/JetBrains/JetBrainsMono/raw/v2.304/fonts/ttf/JetBrainsMono-Bold.ttf',
 };

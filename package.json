@@ -1,7 +1,7 @@
 {
   "name": "heige-svg",
-  "version": "0.2.0",
-  "description": "给公众号文章做会动的 SVG 配图，附 8 个场景模板、校验和抽帧工具",
+  "version": "0.3.0",
+  "description": "给公众号文章做会动的 SVG 配图，附 8 个场景模板、18 个夜空视觉场景、校验和抽帧工具",
   "type": "module",
   "private": true,
   "license": "MIT",
@@ -9,6 +9,7 @@
   "scripts": {
     "fonts": "node bin/fetch-fonts.mjs",
     "demo": "node bin/build.mjs examples/demo.mjs out/demo && node bin/qa.mjs out/demo",
+    "night": "node bin/build.mjs examples/night.mjs out/night && node bin/qa.mjs out/night",
     "showcase": "node bin/showcase.mjs",
     "test": "node --test test/*.test.mjs"
   },
