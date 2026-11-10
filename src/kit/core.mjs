@@ -5,7 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Fig, rect, circle, line, pathEl, text, textWidth } from '../motion.mjs';
+import { Fig, rect, circle, line, pathEl, text, textWidth, deco } from '../motion.mjs';
 import opentype from 'opentype.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -39,8 +39,9 @@ function pathD(cmds) {
   }
   return out;
 }
-export const gt = (x, y, s, size, { fill = P.cream, f = 'black' } = {}) =>
-  pathEl(pathD(font(f).getPath(s, 0, 0, size * 2, { kerning: false }).commands), { transform: `translate(${num(x)} ${num(y)}) scale(0.5)`, fill });
+// icon：字只是角色图标的一部分（比如「你」头像），不按正文文字处理
+export const gt = (x, y, s, size, { fill = P.cream, f = 'black', icon = false } = {}) =>
+  pathEl(pathD(font(f).getPath(s, 0, 0, size * 2, { kerning: false }).commands), { transform: `translate(${num(x)} ${num(y)}) scale(0.5)`, fill, txt: !icon });
 
 export const tx = (x, y, s, { size = 18, weight, fill = P.cream } = {}) => text(+x.toFixed(1), +y.toFixed(1), s, { size, weight, fill });
 export const tw = (s, size, weight) => textWidth(s, size, weight);
@@ -110,7 +111,7 @@ export function burst(f, cx, cy, t0, { n = 14, r = 120, colors = [P.yel, P.rose,
     const mv = f.move(piece, [[0, cx, cy], [t0, cx, cy], [t0 + 0.75, cx + dx, cy + dy, 'out']]);
     s += f.fade(mv, { at: t0, out: t0 + 0.5, inDur: 0.04, outDur: 0.4 });
   }
-  return s;
+  return deco(s);
 }
 // 扩散波纹，循环
 export const ping = (cx, cy, r, color = P.yel, dur = 1.6) =>
@@ -141,7 +142,7 @@ export function bot({ s = 1, ph = 0, mood = 'happy', prop = null, idle = true, c
   b += circle(-31, 12, 6.5, { fill: color, stroke: k, sw: 2.6 }) + circle(31, 12, 6.5, { fill: color, stroke: k, sw: 2.6 });
   b += PROPS[prop]?.() ?? '';
   const body = `<g transform="scale(${s})">${b}</g>`;
-  return idle ? bob(body, 4 * s, 1.25 + (ph % 4) * 0.17, ph) : body;
+  return deco(idle ? bob(body, 4 * s, 1.25 + (ph % 4) * 0.17, ph) : body);
 }
 const PROPS = {
   headset: () => pathEl('M-27 -12C-28 -40 28 -42 28 -12', { stroke: P.ink, sw: 4, cap: 'round' }) + rect(-34, -16, 9, 16, { rx: 4, fill: P.ink }) + rect(25, -16, 9, 16, { rx: 4, fill: P.ink }) + pathEl('M-30 0C-30 12 -18 16 -8 14', { stroke: P.ink, sw: 2.6, cap: 'round' }) + circle(-7, 14, 3.2, { fill: P.ink }),
@@ -159,7 +160,7 @@ const PROPS = {
 };
 
 // 「你」：奶油色圆头像
-export const you = (s = 1) => `<g transform="scale(${s})">${circle(0, 0, 34, { fill: P.cream, stroke: P.ink, sw: 3 })}${gt(-gw('你', 32) / 2, 11, '你', 32, { fill: P.ink })}</g>`;
+export const you = (s = 1) => deco(`<g transform="scale(${s})">${circle(0, 0, 34, { fill: P.cream, stroke: P.ink, sw: 3 })}${gt(-gw('你', 32) / 2, 11, '你', 32, { fill: P.ink, icon: true })}</g>`);
 
 // ---------- 画框 ----------
 // meta：tag 左上角标签（如「系列名 01」）、part 小节名、title 标题、hl 标题里要标黄的词、foot 底栏 [{t, b}]

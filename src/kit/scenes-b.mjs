@@ -20,18 +20,24 @@ export function router(meta, { items, inLabel = '店外的消息', okLabel = '�
   f.add(kit);
   // 垃圾桶
   f.add(pathEl('M560 520L576 610L640 610L656 520Z', { fill: P.dim, stroke: P.ink, sw: 3, join: 'round' }) + rect(552, 506, 112, 16, { rx: 6, fill: P.mute, stroke: P.ink, sw: 3 }) + txc(608, 494, noLabel, { size: 17, weight: 700, fill: P.sub }));
+  // 消息清单一直停在左边，每条前面标好去向（文字和信息不动）
   items.forEach((it, i) => {
-    const t = 0.6 + i * st, w = tw(it.tag, 17, 700) + 26;
+    const y = 280 + i * 66, w = tw(it.tag, 17, 700) + 26;
     const c = chip(-w / 2, -16, it.tag, { fill: it.to === 0 ? P.cream : P.dim, color: it.to === 0 ? P.ink : P.sub, size: 17, h: 32, padX: 13 }).svg;
-    f.add(f.fade(at(134, 280 + i * 66, c), { at: 0.3 + i * 0.1, out: t, outDur: 0.05 }));
-    const fr = [[0, 134, 280 + i * 66], [t, 134, 280 + i * 66], [t + 0.45, 375, 330, 'inout'], [t + 0.75, 375, 330], [t + 1.15, it.to === 0 ? 600 : 608, it.to === 0 ? 268 : 560, 'inout']];
-    if (it.to === 0) { f.add(f.fade(f.move(c, fr), { at: t, out: t + 1.2, outDur: 0.1 })); f.add(f.pop(at(600, 268, check(0, 0, 1.4, P.yel)), 600, 268, { at: t + 1.15, out: t + 1.6 })); }
-    else { f.add(f.fade(f.scale(f.move(c, fr), 608, 560, [[0, 1], [t + 0.9, 1], [t + 1.2, 0.3, 'inout']]), { at: t, out: t + 1.2, outDur: 0.15 })); f.add(f.pop(at(608, 470, cross(0, 0, 1, P.rose)), 608, 470, { at: t + 1.2, out: t + 1.6 })); }
-    f.add(f.flip(at(375, 300, ping(0, 0, 20, it.to === 0 ? P.yel : P.rose, 0.8)), t + 0.5, t + 0.9));
+    f.add(at(148, y, c) + (it.to === 0 ? check(62, y, 0.9, P.yel) : cross(62, y, 0.75, P.rose)));
+  });
+  // 装饰：每条消息对应一封小信封，从清单飞过门口，进后厨或进垃圾桶（信封上没有字，可以动）
+  const env = (fill) => rect(-15, -10, 30, 20, { rx: 3, fill, stroke: P.ink, sw: 2 }) + pathEl('M-15 -10L0 2L15 -10', { stroke: P.ink, sw: 2, join: 'round' });
+  items.forEach((it, i) => {
+    const t = 0.6 + i * st, y = 280 + i * 66;
+    const to = it.to === 0 ? [600, 268] : [608, 548];
+    const fr = [[0, 214, y], [t, 214, y], [t + 0.45, 375, 330, 'inout'], [t + 0.75, 375, 330], [t + 1.15, to[0], to[1], 'inout']];
+    f.add(f.deco(f.fade(f.move(env(it.to === 0 ? P.cream : P.mute), fr), { at: t, out: t + 1.15, inDur: 0.12, outDur: 0.15 })));
+    f.add(f.deco(f.flip(at(375, 300, ping(0, 0, 20, it.to === 0 ? P.yel : P.rose, 0.8)), t + 0.5, t + 0.9)));
   });
   // 完成态：后厨计数
   const kOK = items.filter((x) => x.to === 0).length;
-  f.add(f.fade(gt(520, 438, `收进来 ${kOK} 件`, 20, { fill: P.yel, f: 'bold' }), { at: 0.6 + n * st }));
+  f.add(gt(520, 438, `收进来 ${kOK} 件`, 20, { fill: P.yel, f: 'bold' }));
   f.add(burst(f, 600, 300, 0.6 + n * st));
   return f;
 }

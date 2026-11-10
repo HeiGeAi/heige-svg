@@ -93,6 +93,9 @@ export function barRace(meta, { rows, max, tick = 10, unit = '' }) {
     const x = BX + (v / m) * BW;
     f.add(line(x, axisY, x, axisY + 7, { stroke: th.sub, sw: 1.2 }), text(x - textWidth(String(v), 16) / 2, axisY + 28, String(v), { size: 16, fill: th.mute }));
   }
+  // 装饰：领先的那一条末端一圈波纹，自己循环（条的长度和数字不动）
+  const hero = rows.findIndex((r) => r.hero);
+  if (hero >= 0) f.add(f.pulse(BX + (rows[hero].value / m) * BW, top + hero * rowH + 9, { r: 12 }));
   const marker = line(0, top - 12, 0, axisY, { stroke: th.ink, sw: 1, so: 0.5 }) + pathEl(`M-7 ${axisY + 1}L0 ${axisY - 9}L7 ${axisY + 1}Z`, { fill: th.ink });
   f.add(f.fade(f.move(marker, [[0, BX, 0], [0.4, BX, 0], [0.4 + runDur, BX + BW, 0]]), { at: 0.3, inDur: 0.1 }));
   return f;
@@ -152,6 +155,8 @@ export function pipeline(meta, { stations, items, outs, input = '输入' }) {
     const y = outYs[i], c = i === 1 ? th.accent : th.ink;
     f.add(rect(outX, y, outW, outH, { rx: 10, stroke: c, sw: 1.8, dash: '6 6' }), text(outX + outW / 2 - textWidth(o, 18, 600) / 2, y - 12, o, { size: 18, weight: 600, fill: c }));
   });
+  // 装饰：一个小圆点从输入口穿过各站，自己循环，像数据在流动（方块和标签停在完成态）
+  f.add(f.runner([[inX + 50, midY], ...stX.map((x) => [x + sw / 2, midY]), [outX + outW / 2, midY]], { r: 5, color: th.accent, dur: 2.4 }));
   const landed = [0, 0];
   items.forEach((it, i) => {
     const at = 0.5 + i * cycle, bw = 58, bh = 26, y0 = midY - bh / 2;

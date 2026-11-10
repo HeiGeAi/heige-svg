@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Fig, text, validate } from '../src/motion.mjs';
+import { Fig, text, circle, glyph, validate, freezeInfo } from '../src/motion.mjs';
 import { SCENES } from '../src/scenes.mjs';
 
 const blank = (o = {}) => new Fig({ dur: 8, frame: false, ...o });
@@ -24,7 +24,68 @@ test('静态属性是完成态：循环中段已出现的元素不带 opacity=0'
 });
 
 test('波纹不进静态帧', () => {
-  assert.match(blank().ripple(10, 10, 2), /^<g opacity="0">/);
+  // 波纹是装饰，外面包一层装饰标记，里面第一层仍是 opacity=0
+  assert.match(blank().ripple(10, 10, 2), /^<g data-hgd="1"><g opacity="0">/);
+});
+
+// ---------- 文字和信息不动（2026-11-10） ----------
+const anims = (s) => (s.match(/<animate/g) || []).length;
+
+test('文字上的动画输出时被去掉，停在完成态', () => {
+  const f = blank();
+  f.add(f.fade(text(0, 0, '第一条'), { at: 1 }));
+  const s = f.toString();
+  assert.equal(anims(s), 0);
+  assert.ok(s.includes('第一条'));
+});
+
+test('转成路径的字形也算文字', () => {
+  const f = blank();
+  f.add(f.fade(glyph(0, 0, 'AB'), { at: 1 }));
+  assert.equal(anims(f.toString()), 0);
+});
+
+test('主时间轴上没标装饰的图形也不动（进度条、指针这类信息）', () => {
+  const f = blank();
+  f.add(f.grow(0, 0, 100, 10, { at: 1 }));
+  f.add(f.move(circle(0, 0, 5), [[0, 0, 0], [2, 50, 0]]));
+  assert.equal(anims(f.toString()), 0);
+});
+
+test('标了装饰的角色照主时间轴动', () => {
+  const f = blank();
+  f.add(f.deco(f.move(circle(0, 0, 5), [[0, 0, 0], [2, 50, 0]])));
+  assert.equal(anims(f.toString()), 1);
+});
+
+test('独立小循环（星星闪）照常动，含文字的除外', () => {
+  const loop = (c) => `<g><animate attributeName="opacity" values="0;1;0" keyTimes="0;0.5;1" dur="2s" begin="0s" repeatCount="indefinite"></animate>${c}</g>`;
+  assert.equal(anims(freezeInfo(loop(circle(0, 0, 3))).svg), 1);
+  assert.equal(anims(freezeInfo(loop(text(0, 0, '字'))).svg), 0);
+});
+
+test('装饰组里不能藏文字：有文字照样冻住', () => {
+  const f = blank();
+  f.add(f.deco(f.move(text(0, 0, '跑腿'), [[0, 0, 0], [2, 50, 0]])));
+  assert.equal(anims(f.toString()), 0);
+});
+
+test('输出里不留内部标记', () => {
+  const f = blank();
+  f.add(f.deco(f.fade(glyph(0, 0, 'A'), { at: 1 })));
+  assert.doesNotMatch(f.toString(), /data-hg/);
+});
+
+test('motion: all 时全部照时间轴动（只给视频素材用）', () => {
+  const f = blank({ motion: 'all' });
+  f.add(f.fade(text(0, 0, '第一条'), { at: 1 }));
+  assert.equal(anims(f.toString()), 1);
+});
+
+test('校验：文字上挂动画报错', () => {
+  const bad = `<svg><g><animate attributeName="opacity" values="0;1" keyTimes="0;1" dur="2s" begin="0s" repeatCount="indefinite"></animate>${text(0, 0, '字')}</g></svg>`;
+  assert.ok(validate(bad, 'x').errs.some((e) => e.includes('文字')));
+  assert.equal(validate(bad, 'x', { allowTextMotion: true }).errs.filter((e) => e.includes('文字')).length, 0);
 });
 
 test('等宽打字遇到中文退回 <text>，拉丁字母转路径', () => {
