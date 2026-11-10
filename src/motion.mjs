@@ -4,6 +4,9 @@
 //   只动 opacity 和 transform；不用 id、style 标签、clipPath、mask、defs、use、渐变、滤镜
 //   所有动画 begin="0s" repeatCount="indefinite"，同一个 dur，靠 keyTimes 排时间
 //   不写 animate 时的静态属性就是「静态兜底帧」，默认取循环末尾的完成态
+//   文字和信息不动（2026-11-10）：公众号读者是按第一条、第二条的顺序在读，文字一循环重播，读到一半就丢了。
+//   所以输出时：含文字的元素一律去掉动画；主时间轴上的出场动画（fade/move/pop/grow/flip/counter/type）一律停在完成态，
+//   只有角色、光标、彩纸这些标了 deco 的装饰可以照主时间轴动；星星闪、角色晃这类独立小循环照常动。
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -76,6 +79,9 @@ function glyphPath(str, size, fontName) {
 }
 
 // ---------- XML ----------
+const TXT = 'data-hgt'; // 文字（字形路径）
+const MAIN = 'data-hgm'; // 主时间轴动画
+const DECO = 'data-hgd'; // 装饰：可以照主时间轴动
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const num = (n) => (Number.isInteger(n) ? String(n) : String(+Number(n).toFixed(2)));
 const attrs = (o) => Object.entries(o).filter(([, v]) => v !== undefined && v !== null && v !== false).map(([k, v]) => ` ${k}="${typeof v === 'number' ? num(v) : esc(v)}"`).join('');
@@ -83,18 +89,22 @@ const attrs = (o) => Object.entries(o).filter(([, v]) => v !== undefined && v !=
 export const rect = (x, y, w, h, o = {}) => `<rect${attrs({ x, y, width: w, height: h, rx: o.rx, fill: o.fill ?? 'none', 'fill-opacity': o.fo, stroke: o.stroke, 'stroke-width': o.sw, 'stroke-opacity': o.so, 'stroke-dasharray': o.dash })}></rect>`;
 export const circle = (cx, cy, r, o = {}) => `<circle${attrs({ cx, cy, r, fill: o.fill ?? 'none', 'fill-opacity': o.fo, stroke: o.stroke, 'stroke-width': o.sw, 'stroke-opacity': o.so })}></circle>`;
 export const line = (x1, y1, x2, y2, o = {}) => `<line${attrs({ x1, y1, x2, y2, stroke: o.stroke ?? '#D8D0C1', 'stroke-width': o.sw ?? 1.2, 'stroke-dasharray': o.dash, 'stroke-linecap': o.cap, 'stroke-opacity': o.so })}></line>`;
-export const pathEl = (d, o = {}) => `<path${attrs({ transform: o.transform, d, fill: o.fill ?? 'none', 'fill-opacity': o.fo, stroke: o.stroke, 'stroke-width': o.sw, 'stroke-linecap': o.cap, 'stroke-linejoin': o.join, 'stroke-dasharray': o.dash })}></path>`;
+// o.txt：这条路径是转成路径的文字（字形），输出时按文字处理（不许动），标记在 toString 里去掉
+export const pathEl = (d, o = {}) => `<path${attrs({ transform: o.transform, d, fill: o.fill ?? 'none', 'fill-opacity': o.fo, stroke: o.stroke, 'stroke-width': o.sw, 'stroke-linecap': o.cap, 'stroke-linejoin': o.join, 'stroke-dasharray': o.dash, [TXT]: o.txt ? 1 : undefined })}></path>`;
 export const text = (x, y, s, o = {}) => `<text${attrs({ x, y, 'font-size': o.size ?? 18, 'font-weight': o.weight, fill: o.fill ?? '#1E1C19' })}>${esc(s)}</text>`;
 export const image = (x, y, w, h, href, o = {}) => `<image${attrs({ x, y, width: w, height: h, preserveAspectRatio: o.par ?? 'none', href: `asset:${href}` })}></image>`;
 export const g = (content, o = {}) => `<g${attrs(o)}>${content}</g>`;
-export const glyph = (x, y, s, o = {}) => pathEl(glyphPath(s, o.size ?? 22, o.font ?? 'mono'), { transform: `translate(${num(x)} ${num(y)}) scale(0.5)`, fill: o.fill ?? '#1E1C19' });
+// 装饰标记：这一组可以照主时间轴动（角色、光标、彩纸），组里不能有文字
+export const deco = (content) => `<g ${DECO}="1">${content}</g>`;
+export const glyph = (x, y, s, o = {}) => pathEl(glyphPath(s, o.size ?? 22, o.font ?? 'mono'), { transform: `translate(${num(x)} ${num(y)}) scale(0.5)`, fill: o.fill ?? '#1E1C19', txt: true });
 
 const CURSOR = 'M0 0L0 25.5L6.4 19.3L10.6 28.6L15 26.7L10.9 17.6L19.4 17.6Z';
 
 // ---------- Figure ----------
 export class Fig {
-  constructor({ dur = 8, h = 720, eyebrow = '', title = '', sub = '', foot = null, theme = 'paper', titleSize = 44, poster = null, frame = true, rule = true } = {}) {
-    this.T = dur; this.h = h; this.title = title; this.th = THEMES[theme] ?? THEMES.paper;
+  // motion：'deco'（默认）文字和信息不动，只动装饰；'all' 全部照时间轴动，只给不进公众号正文的场合用（比如视频素材）
+  constructor({ dur = 8, h = 720, eyebrow = '', title = '', sub = '', foot = null, theme = 'paper', titleSize = 44, poster = null, frame = true, rule = true, motion = 'deco' } = {}) {
+    this.T = dur; this.h = h; this.title = title; this.th = THEMES[theme] ?? THEMES.paper; this.motion = motion;
     this.exit = dur - 0.6; // 内容开始退场的时刻：退场 0.3s，再留 0.3s 空白后循环
     this.posterT = poster ?? dur - 0.7;
     this.parts = [];
@@ -112,7 +122,7 @@ export class Fig {
     while (glyphWidth(title, size, 'serif') > 690 && size > 26) size -= 1;
     const tw = glyphWidth(title, size, 'serif');
     const baseY = sub || !rule ? 104 : 118;
-    this.add(pathEl(glyphPath(title, size, 'serif'), { transform: `translate(${num((W - tw) / 2)} ${baseY}) scale(0.5)`, fill: t.ink }));
+    this.add(pathEl(glyphPath(title, size, 'serif'), { transform: `translate(${num((W - tw) / 2)} ${baseY}) scale(0.5)`, fill: t.ink, txt: true }));
     if (sub) this.add(text(this.centerX(sub, 22), 144, sub, { size: 22, fill: t.sub }));
     if (rule) this.add(line(40, 170, 710, 170, { stroke: t.line }));
     if (foot) {
@@ -123,7 +133,7 @@ export class Fig {
       const y = this.h - 32;
       this.add(line(40, y - 42, 710, y - 42, { stroke: t.line }));
       runs.forEach((r, i) => {
-        if (r.big) this.add(pathEl(glyphPath(r.t, r.size ?? 34, 'serif'), { transform: `translate(${num(x)} ${y + 1}) scale(0.5)`, fill: t.accent }));
+        if (r.big) this.add(pathEl(glyphPath(r.t, r.size ?? 34, 'serif'), { transform: `translate(${num(x)} ${y + 1}) scale(0.5)`, fill: t.accent, txt: true }));
         else this.add(text(x, y, r.t, { size: 23, weight: r.b ? 600 : undefined, fill: r.accent ? t.accent : r.b ? t.ink : t.sub }));
         x += widths[i];
       });
@@ -154,7 +164,7 @@ export class Fig {
     for (let i = 1; i < kt.length; i++) if (kt[i] <= kt[i - 1]) kt[i] = +(kt[i - 1] + 0.0001).toFixed(4);
     if (kt[kt.length - 1] > 1 || kt[kt.length - 2] >= 1) this.warn.push('keyTimes 溢出，请减少关键帧或拉长 dur');
     const ks = f.slice(1).map(([, , e]) => EASE[e]);
-    return `<${tag}${extra} values="${f.map((x) => x[1]).join(';')}" keyTimes="${kt.join(';')}" calcMode="spline" keySplines="${ks.join(';')}" dur="${num(T)}s" begin="0s" repeatCount="indefinite"></${tag}>`;
+    return `<${tag} ${MAIN}="1"${extra} values="${f.map((x) => x[1]).join(';')}" keyTimes="${kt.join(';')}" calcMode="spline" keySplines="${ks.join(';')}" dur="${num(T)}s" begin="0s" repeatCount="indefinite"></${tag}>`;
   }
 
   _valueAt(frames, t) {
@@ -249,7 +259,7 @@ export class Fig {
     f.push([this.exit + 0.5, rest[0], rest[1], 'inout']);
     let html = clicks.map((c) => this.ripple(c.x + 2, c.y + 2, c.t + 0.05)).join('');
     html += this.move(pathEl(CURSOR, { fill: color, stroke: '#FFFFFF', sw: 2, join: 'round' }), f);
-    return html;
+    return this.deco(html);
   }
 
   // 点击波纹：一闪而过，不要进静态帧
@@ -258,7 +268,7 @@ export class Fig {
     const s = this.scale(c, 0, 0, [[0, 0.2], [at, 0.2], [at + 0.45, 1, 'out']]);
     const frames = [[0, 0], [at - 0.01, 0], [at, 0.55], [at + 0.45, 0]];
     const a = this._smil(frames, 'animate', ' attributeName="opacity"');
-    return `<g opacity="0">${a}<g transform="translate(${num(x)} ${num(y)})">${s}</g></g>`;
+    return this.deco(`<g opacity="0">${a}<g transform="translate(${num(x)} ${num(y)})">${s}</g></g>`);
   }
 
   // 强调框：结论出现时框一下
@@ -280,7 +290,7 @@ export class Fig {
       const kts = Array.from({ length: n + 1 }, (_, k) => +(k / n).toFixed(3)).join(';');
       spokes += `<g><animate attributeName="opacity" values="${vals}" keyTimes="${kts}" calcMode="discrete" dur="0.8s" begin="0s" repeatCount="indefinite"></animate>${line(x1, y1, x2, y2, { stroke: c, sw: 2.2, cap: 'round' })}</g>`;
     }
-    return this.fade(spokes, { at, out, inDur: 0.05, outDur: 0.05 });
+    return this.deco(this.fade(spokes, { at, out, inDur: 0.05, outDur: 0.05 }));
   }
 
   // 扫描线：一条线走过目标区，同时留下完成态
@@ -299,7 +309,7 @@ export class Fig {
     return values.map((v, i) => {
       const start = at + i * step;
       const end = i === values.length - 1 ? out : start + step;
-      const piece = big ? pathEl(glyphPath(String(v), size, 'serif'), { transform: `translate(${num(x)} ${num(y)}) scale(0.5)`, fill: fill ?? this.th.accent }) : text(x, y, v, { size, weight, fill: fill ?? this.th.ink });
+      const piece = big ? pathEl(glyphPath(String(v), size, 'serif'), { transform: `translate(${num(x)} ${num(y)}) scale(0.5)`, fill: fill ?? this.th.accent, txt: true }) : text(x, y, v, { size, weight, fill: fill ?? this.th.ink });
       return this.flip(piece, start, end);
     }).join('');
   }
@@ -354,16 +364,81 @@ export class Fig {
     return pathEl(`M${num(x - s)} ${num(y)}L${num(x - s * 0.25)} ${num(y + s * 0.75)}L${num(x + s)} ${num(y - s)}`, { stroke: c, sw: 3, cap: 'round', join: 'round' });
   }
 
+  // 装饰：里面的东西可以照主时间轴动（角色走路、光标移动、彩纸），但里面不能有文字
+  deco(content) { return `<g ${DECO}="1">${content}</g>`; }
+
+  // 装饰小循环：一圈波纹从点上扩散出去，自己循环，不跟主时间轴。用来把视线引到结论上，本身不带信息
+  pulse(cx, cy, { r = 12, color, dur = 1.6, to = 1.9 } = {}) {
+    const c = color ?? this.th.accent;
+    return `<g transform="translate(${num(cx)} ${num(cy)})"><g opacity="0"><animate attributeName="opacity" values="0.85;0" keyTimes="0;1" dur="${num(dur)}s" begin="0s" repeatCount="indefinite"></animate><g transform="scale(1)"><animateTransform attributeName="transform" type="scale" values="1;${num(to)}" keyTimes="0;1" dur="${num(dur)}s" begin="0s" repeatCount="indefinite"></animateTransform>${circle(0, 0, r, { stroke: c, sw: 2.4 })}</g></g></g>`;
+  }
+
+  // 装饰小循环：一个小圆点沿着 points 跑一圈再淡出，自己循环（比如流水线上跑的「数据包」）
+  runner(points, { r = 6, color, dur = 2.6 } = {}) {
+    const c = color ?? this.th.accent, n = points.length;
+    const kt = points.map((_, i) => +(i / (n - 1)).toFixed(4)).join(';');
+    const vals = points.map(([x, y]) => `${num(x)} ${num(y)}`).join(';');
+    const op = Array.from({ length: n }, (_, i) => (i === 0 || i === n - 1 ? 0 : 1)).join(';');
+    return `<g opacity="0"><animate attributeName="opacity" values="${op}" keyTimes="${kt}" dur="${num(dur)}s" begin="0s" repeatCount="indefinite"></animate><g transform="translate(${vals.split(';')[0]})"><animateTransform attributeName="transform" type="translate" values="${vals}" keyTimes="${kt}" dur="${num(dur)}s" begin="0s" repeatCount="indefinite"></animateTransform>${circle(0, 0, r, { fill: c })}</g></g>`;
+  }
+
   toString() {
-    const body = this.parts.join('');
+    let body = this.parts.join('');
+    if (this.motion !== 'all') body = freezeInfo(body).svg;
+    for (const k of [TXT, MAIN, DECO]) body = body.split(` ${k}="1"`).join('');
     const svg = `<svg viewBox="0 0 750 ${this.h}" width="750" height="${this.h}" xmlns="http://www.w3.org/2000/svg" style="display:block;max-width:100%;height:auto"><desc>${esc(this.title)}</desc>${body}</svg>`;
     return svg;
   }
 }
 
+// ---------- 文字和信息不动 ----------
+// 把本引擎输出的 SVG 解析成树（每个元素都有闭合标签，文字内容已转义，不会有裸的 <），按两条规则去掉动画：
+//   1. 元素子树里有文字（<text>、<tspan>、标了文字的字形路径），去掉它直接挂着的所有动画，独立小循环也去。
+//   2. 主时间轴动画（出场、移动、弹入、长条、数字滚动、逐字打出），只有目标子树里有装饰标记时才保留。
+// 去掉动画后元素停在自己的静态属性上，也就是本引擎写好的完成态（poster 时刻）。
+export function freezeInfo(svg) {
+  const re = /<(\/?)([a-zA-Z][\w:-]*)([^>]*)>/g;
+  const root = { tag: '#root', children: [] };
+  const stack = [root];
+  let last = 0, m;
+  while ((m = re.exec(svg))) {
+    const [all, close, tag, rest] = m;
+    const top = stack[stack.length - 1];
+    if (m.index > last) top.children.push({ raw: svg.slice(last, m.index) });
+    last = m.index + all.length;
+    if (close) { if (stack.length > 1) stack.pop().end = all; continue; }
+    const n = { tag, open: all, children: [], parent: top, txt: tag === 'text' || tag === 'tspan' || rest.includes(` ${TXT}="1"`), deco: rest.includes(` ${DECO}="1"`), main: rest.includes(` ${MAIN}="1"`) };
+    top.children.push(n);
+    if (/\/\s*$/.test(rest)) { n.self = true; continue; }
+    stack.push(n);
+  }
+  if (last < svg.length) root.children.push({ raw: svg.slice(last) });
+  const mark = (n) => {
+    let t = !!n.txt, d = !!n.deco;
+    for (const c of n.children) if (c.tag) { const r = mark(c); t = t || r.t; d = d || r.d; }
+    n.hasText = t; n.hasDeco = d; return { t, d };
+  };
+  mark(root);
+  // 祖先里有装饰标记，也算装饰（装饰组里的子元素自己的出场动画）
+  const inDeco = (n) => { for (let p = n; p; p = p.parent) if (p.deco) return true; return false; };
+  let removed = 0;
+  const emit = (n) => {
+    if (!n.tag) return n.raw;
+    if (n.tag === '#root') return n.children.map(emit).join('');
+    if (n.tag === 'animate' || n.tag === 'animateTransform') {
+      const p = n.parent;
+      if (p.hasText || (n.main && !p.hasDeco && !inDeco(p))) { removed++; return ''; }
+    }
+    if (n.self) return n.open;
+    return n.open + n.children.map(emit).join('') + (n.end ?? '');
+  };
+  return { svg: emit(root), removed };
+}
+export const freezeText = freezeInfo;
+
 // 校验：把会被微信吃掉或违反手法的东西在本地拦下来
 const ALLOWED = new Set(['svg', 'desc', 'g', 'path', 'rect', 'circle', 'line', 'text', 'image', 'animate', 'animateTransform', 'tspan']);
-export function validate(svg, name = '') {
+export function validate(svg, name = '', opts = {}) {
   const errs = [], warns = [];
   for (const m of svg.matchAll(/<([a-zA-Z][\w:-]*)/g)) if (!ALLOWED.has(m[1])) errs.push(`${name}: 不允许的标签 <${m[1]}>（实物图里从未出现）`);
   if (/\sid="/.test(svg)) errs.push(`${name}: 不能有 id 属性`);
@@ -380,6 +455,11 @@ export function validate(svg, name = '') {
     const v = m[1].split(';').length, k = m[2].split(';').length;
     if (v !== k) errs.push(`${name}: values 和 keyTimes 数量不等`);
     if (m[3] === 'spline' && m[4] && m[4].split(';').length !== k - 1) errs.push(`${name}: keySplines 数量不对`);
+  }
+  // 文字不动：动画挂在含 <text> 的元素上就报错（字形路径和主时间轴的标记在输出时已去掉，这里只能查 <text>）
+  if (!opts.allowTextMotion) {
+    const check = freezeInfo(svg);
+    if (check.removed) errs.push(`${name}: 有 ${check.removed} 处动画挂在含文字的元素上，公众号正文里文字必须不动（只动装饰）`);
   }
   const kb = Buffer.byteLength(svg) / 1024;
   if (kb > 75) warns.push(`${name}: ${kb.toFixed(0)}KB，超过实物图上限（约 72KB）`);

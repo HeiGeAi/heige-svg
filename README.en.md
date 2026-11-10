@@ -8,6 +8,8 @@ Clicks, terminal commands, and changing data can be easier to explain in motion.
 
 You can also write the article in Markdown. Code fences become copyable prompt cards, and every build produces a publishing console page with one-click copy for the title, digest, cover image, and body.
 
+**Since 0.5.0, text and information never move; only characters and decorations animate.** Readers of an article read item one, then item two. If the text keeps fading in item by item and the loop restarts from item one, the reader loses their place. The engine now renders text, bars, needles, and checklists in their finished state, while robots, cursors, twinkling stars, and confetti keep moving.
+
 The toolkit includes eight scene templates, a **night kit** of 18 storytelling scenes (since 0.3.0), output validation, frame capture, an experimental draft publisher, and a Claude Code skill for choosing scenes and building illustrations from an article.
 
 <p>
@@ -156,7 +158,7 @@ npm run showcase
 
 Tests cover animation timelines, eight templates, validation, and dry-run and mock publishing flows. Passing these tests does not establish WeChat compatibility.
 
-The engine restricts SVG markup and animates only `opacity` and `transform`. The design notes document observations of 49 animations in five public articles. See [the analysis](docs/analysis.md). Those observations do not replace testing this toolkit against the real draft API and mobile app.
+The engine restricts SVG markup and animates only `opacity` and `transform`. Since 0.5.0 it also strips animation from any element containing text and freezes timeline entrances (fade, move, pop, grow, flip, counter, type) in their finished state, unless the target is wrapped in `f.deco()` (characters, cursors, confetti, props without text). Independent loops such as twinkles and idle bobbing keep running. Use `new Fig({ motion: 'all' })` only for non-article output such as video footage. The design notes document observations of 49 animations in five public articles. See [the analysis](docs/analysis.md). Those observations do not replace testing this toolkit against the real draft API and mobile app.
 
 ## Credits and license
 

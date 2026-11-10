@@ -65,6 +65,7 @@ python3 bin/publish.py <输出目录> --account <别名> --cover <封面>
 
 ## 红线
 
+- **文字和信息不动（0.5.0，问问黑哥 2026-11-10 拍板）**：读者按顺序读文字，文字一循环重播就丢了。引擎输出时自动冻住文字和主时间轴上的出场动画，停在完成态；要动的只能是用 `f.deco()` 包起来的角色、光标、彩纸、没字的小道具，以及星星闪、角色晃这类独立小循环。写新场景时想让什么动，先问它身上有没有字、是不是信息（进度、指针、打勾、数量），是就别动；需要动感就加一个角色或装饰来动。
 - 只用 `g/path/rect/circle/line/text/image/animate/animateTransform/desc`；只动 `opacity` 和 `transform`。`bin/build.mjs` 会拦截违规
 - 不用 `id`、`clipPath`、`mask`、`defs`、`use`、渐变、滤镜、`<style>`、`text-anchor`。需要裁切就用画布边缘或遮挡块
 - 特殊字体（标题衬线、终端等宽）转路径，不要写 `font-family`
