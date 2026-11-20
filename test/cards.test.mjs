@@ -65,6 +65,17 @@ test('编译 .md：出 article、preview、console，发布台带四个复制按
   assert.ok(fs.readFileSync(path.join(out, 'article.html'), 'utf8').includes('整理会议纪要'));
 });
 
+test('编译 Windows 换行的 Markdown 稿件保留标题、作者和摘要', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'heige-crlf-'));
+  const source = path.join(dir, 'article.md');
+  const out = path.join(dir, 'out');
+  fs.writeFileSync(source, ['---', 'title: 标题', 'author: 作者', 'digest: 摘要', '---', '这是正文。', ''].join('\r\n'));
+  execFileSync(process.execPath, [path.join(root, 'bin/build.mjs'), source, out]);
+
+  const { title, author, digest, chars } = JSON.parse(fs.readFileSync(path.join(out, 'manifest.json'), 'utf8'));
+  assert.deepEqual({ title, author, digest, chars }, { title: '标题', author: '作者', digest: '摘要', chars: 5 });
+});
+
 test('粘进公众号的正文和卡片：行高一律写像素', () => {
   const out = fs.mkdtempSync(path.join(os.tmpdir(), 'heige-lh-'));
   execFileSync(process.execPath, [path.join(root, 'bin/build.mjs'), path.join(root, 'examples/markdown.md'), out]);

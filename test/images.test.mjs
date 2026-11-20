@@ -24,8 +24,17 @@ test('正文里的本地图片被内嵌，远程和已内嵌的不动', () => {
   assert.ok(!html.includes('src="a.png"'));
 });
 
+test('内嵌单引号图片，保留属性值中的引号和 data-src', () => {
+  const d = tmp(); fs.writeFileSync(path.join(d, 'a.png'), pngHead(10, 10));
+  const source = "<img alt=\"1 > 0, src='描述'\" data-src='ignored.png' SRC = 'a.png'>";
+  const { html, errs } = inlineLocalImages(source, d);
+  assert.deepEqual(errs, []);
+  assert.ok(html.includes("alt=\"1 > 0, src='描述'\" data-src='ignored.png'"));
+  assert.ok(html.includes('SRC="data:image/png;base64,'));
+});
+
 test('找不到的本地图片报错，不会悄悄变成空白', () => {
-  const { errs } = inlineLocalImages('<img src="nope.jpg">', tmp());
+  const { errs } = inlineLocalImages("<img src='nope.jpg'>", tmp());
   assert.equal(errs.length, 1);
 });
 

@@ -30,14 +30,23 @@ export const dataUri = (file) => `data:image/${MIME[path.extname(file).toLowerCa
 // 把 html 里所有本地 <img src> 换成 base64。远程地址（http/https）和已内嵌的原样保留
 export function inlineLocalImages(html, baseDir) {
   const errs = [], warns = [];
-  const out = html.replace(/<img\b([^>]*?)\ssrc="([^"]+)"/g, (all, pre, src) => {
-    if (/^(data:|https?:\/\/)/.test(src)) return all;
-    const file = path.resolve(baseDir, decodeURI(src.replace(/^file:\/\//, '')));
-    if (!fs.existsSync(file)) { errs.push(`找不到正文图片 ${src}（本地图片必须能找到，否则粘进公众号会是一块空白）`); return all; }
-    const kb = fs.statSync(file).size / 1024;
-    if (kb > BODY_IMAGE_LIMIT_KB) warns.push(`正文图片 ${src} ${kb.toFixed(0)}KB，超过公众号正文图片 1MB 上限，先压成 jpg（比如宽 1080、质量 85）`);
-    return `<img${pre} src="${dataUri(file)}"`;
-  });
+  const out = html.replace(/<img(?=[\s/>])(?:[^"'<>]|"[^"]*"|'[^']*')*>/gi, (tag) =>
+    tag.replace(/(\s)([^\s=/>]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g, (attribute, space, name, doubleQuoted, singleQuoted, unquoted) => {
+      const src = doubleQuoted ?? singleQuoted ?? unquoted;
+      if (name.toLowerCase() !== 'src' || !src || /^(data:|https?:\/\/|\/\/)/i.test(src)) return attribute;
+      let local = src.replace(/^file:\/\//i, '');
+      try { local = decodeURI(local); } catch { /* a literal path may contain percent signs */ }
+      const file = path.resolve(baseDir, local);
+      const info = fs.statSync(file, { throwIfNoEntry: false });
+      if (!info?.isFile()) {
+        errs.push(`找不到正文图片 ${src}（本地图片必须能找到，否则粘进公众号会是一块空白）`);
+        return attribute;
+      }
+      const kb = info.size / 1024;
+      if (kb > BODY_IMAGE_LIMIT_KB) warns.push(`正文图片 ${src} ${kb.toFixed(0)}KB，超过公众号正文图片 1MB 上限，先压成 jpg（比如宽 1080、质量 85）`);
+      return `${space}${name}="${dataUri(file)}"`;
+    }),
+  );
   return { html: out, errs, warns };
 }
 
