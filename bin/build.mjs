@@ -20,7 +20,7 @@ const art = src.endsWith('.md') ? readMarkdown(src) : (await import(pathToFileUR
 
 // .md 直接排版：开头可选 --- 包住的 title、author、digest、cover，正文写法见 src/markdown.mjs（.md 里没法定义配图）
 function readMarkdown(file) {
-  let md = fs.readFileSync(file, 'utf8');
+  let md = fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
   const meta = {};
   const fm = md.match(/^---\n([\s\S]*?)\n---\n/);
   if (fm) {
