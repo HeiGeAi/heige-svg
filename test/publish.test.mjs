@@ -93,3 +93,14 @@ test('缺凭据时不输出密钥，退出码非 0', async () => {
   assert.notEqual(r.code, 0);
   assert.match(r.err, /WECHAT_NOBODY_APPID/);
 });
+
+test('manifest 缺少素材路径时返回明确错误而不是 KeyError 堆栈', async () => {
+  const dir = fixture();
+  fs.writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify({ title: '标题', kb: 1, figs: [{}], assets: {} }));
+  const { server, base } = await fakeWechat(false);
+  const r = await run([dir, '--cover', path.join(dir, 'cover.jpg'), '--send'], { ...ENV, WECHAT_API_BASE: base });
+  server.close();
+  assert.equal(r.code, 1);
+  assert.match(r.err, /manifest 缺少素材路径：paper/);
+  assert.doesNotMatch(r.err, /Traceback/);
+});

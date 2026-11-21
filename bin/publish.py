@@ -112,12 +112,15 @@ def main():
 
     # 同一账号的素材只传一次
     cache = args.dir / f"asset-urls.{args.account or 'default'}.json"
-    urls = json.loads(cache.read_text()) if cache.exists() else {}
+    urls = json.loads(cache.read_text(encoding="utf-8")) if cache.exists() else {}
+    assets = man.get("assets") or {}
     for name in used:
         if name not in urls:
-            urls[name] = upload("/cgi-bin/media/uploadimg", token, Path(man["assets"][name]))["url"]
+            if name not in assets:
+                raise WeChatError(f"manifest 缺少素材路径：{name}")
+            urls[name] = upload("/cgi-bin/media/uploadimg", token, Path(assets[name]))["url"]
             print(f"已上传 {name}")
-    cache.write_text(json.dumps(urls, ensure_ascii=False, indent=2))
+    cache.write_text(json.dumps(urls, ensure_ascii=False, indent=2), encoding="utf-8")
     content = re.sub(r"asset:([\w.-]+)", lambda m: urls[m.group(1)], html)
 
     thumb = args.cover_media_id or upload("/cgi-bin/material/add_material", token, args.cover, type="image")["media_id"]
