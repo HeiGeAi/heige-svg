@@ -64,6 +64,7 @@ for (const b of art.blocks) {
   }
   else if (b.fig || b.scene || b.kit) {
     if (b.kit && !KIT[b.kit]) { errs.push(`没有这个夜空场景：${b.kit}`); continue; }
+    if (b.scene && !SCENES[b.scene]) { errs.push(`没有这个场景：${b.scene}`); continue; }
     const fig = b.fig ? b.fig() : b.kit ? KIT[b.kit](b.meta, b.data) : SCENES[b.scene](b.meta, b.data);
     const svg = fig.toString();
     const name = `fig${String(++n).padStart(2, '0')}`;

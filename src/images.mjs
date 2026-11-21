@@ -12,12 +12,22 @@ export const BODY_IMAGE_LIMIT_KB = 1024;
 export function imageSize(buf) {
   if (buf.length > 24 && buf.readUInt32BE(0) === 0x89504e47) return { w: buf.readUInt32BE(16), h: buf.readUInt32BE(20), type: 'png' };
   if (buf.length > 10 && buf.toString('ascii', 0, 3) === 'GIF') return { w: buf.readUInt16LE(6), h: buf.readUInt16LE(8), type: 'gif' };
-  if (buf[0] === 0xff && buf[1] === 0xd8) {
+  if (buf.length > 4 && buf[0] === 0xff && buf[1] === 0xd8) {
     let i = 2;
-    while (i + 9 < buf.length) {
+    while (i + 1 < buf.length) {
       if (buf[i] !== 0xff) { i++; continue; }
-      const m = buf[i + 1], len = buf.readUInt16BE(i + 2);
-      if (m >= 0xc0 && m <= 0xcf && m !== 0xc4 && m !== 0xc8 && m !== 0xcc) return { h: buf.readUInt16BE(i + 5), w: buf.readUInt16BE(i + 7), type: 'jpeg' };
+      while (i + 1 < buf.length && buf[i + 1] === 0xff) i++;
+      if (i + 1 >= buf.length) break;
+      const m = buf[i + 1];
+      if (m === 0x00 || m === 0x01 || (m >= 0xd0 && m <= 0xd8)) { i += 2; continue; }
+      if (m === 0xd9 || m === 0xda) break;
+      if (i + 3 >= buf.length) break;
+      const len = buf.readUInt16BE(i + 2);
+      if (len < 2 || i + 2 + len > buf.length) break;
+      if (m >= 0xc0 && m <= 0xcf && m !== 0xc4 && m !== 0xc8 && m !== 0xcc) {
+        if (i + 8 >= buf.length) break;
+        return { h: buf.readUInt16BE(i + 5), w: buf.readUInt16BE(i + 7), type: 'jpeg' };
+      }
       i += 2 + len;
     }
   }

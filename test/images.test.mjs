@@ -15,6 +15,21 @@ test('读得出 PNG 和 JPEG 的宽高', () => {
   assert.equal(s.type, 'jpeg'); assert.ok(s.w > 0 && s.h > 0);
 });
 
+test('JPEG 解析兼容连续 0xFF 填充、独立标记与异常段长', () => {
+  // SOI + RST0 (standalone, no length) + 0xFF fill byte + SOF0 (900x383)
+  const paddedJpeg = Buffer.from([
+    0xff, 0xd8,
+    0xff, 0xd0,
+    0xff, 0xff, 0xc0, 0x00, 0x0b, 0x08,
+    0x01, 0x7f, // height = 383
+    0x03, 0x84, // width = 900
+    0x03, 0x01, 0x11, 0x00,
+  ]);
+  assert.deepEqual(imageSize(paddedJpeg), { w: 900, h: 383, type: 'jpeg' });
+  // Truncated / invalid segment length < 2 returns null without crashing
+  assert.equal(imageSize(Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00])), null);
+});
+
 test('正文里的本地图片被内嵌，远程和已内嵌的不动', () => {
   const d = tmp(); fs.writeFileSync(path.join(d, 'a.png'), pngHead(10, 10));
   const { html, errs } = inlineLocalImages('<p><img src="a.png"></p><img src="https://x.y/b.png"><img src="data:image/png;base64,AA">', d);

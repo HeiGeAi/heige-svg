@@ -26,7 +26,8 @@ const img = (p) => dataUri(path.resolve(base, p));
 const STACK = "-apple-system,BlinkMacSystemFont,'PingFang SC','Noto Sans SC','Microsoft YaHei',sans-serif";
 
 function page(c) {
-  const av = c.avatar ? `<img class="av" src="${img(c.avatar)}">` : `<div class="av ini">${esc([...(c.name ?? '?')][0].toUpperCase())}</div>`;
+  const initial = ([...String(c.name ?? '').trim()][0] ?? '?').toUpperCase();
+  const av = c.avatar ? `<img class="av" src="${img(c.avatar)}">` : `<div class="av ini">${esc(initial)}</div>`;
   const media = c.media ? `<img class="media" src="${img(c.media)}">` : '';
   const stats = (c.stats ?? []).map(([k, v]) => `<span>${esc(k)} <em>${esc(v)}</em></span>`).join('');
   return `<!doctype html><meta charset="utf-8"><style>
@@ -54,22 +55,25 @@ ${stats ? `<div class="ft">${stats}</div>` : ''}
 }
 
 const b = await chromium.launch(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH, headless: true } : { channel: 'chrome', headless: true });
-const ctx = await b.newContext({ viewport: { width: 720, height: 800 }, deviceScaleFactor: 1.5 });
-const p = await ctx.newPage();
 let bad = 0;
-for (const [i, c] of (cfg.cards ?? []).entries()) {
-  await p.setContent(page(c), { waitUntil: 'load' });
-  const name = c.out ?? `xcard-${String(i + 1).padStart(2, '0')}.jpg`;
-  const file = path.join(out, name);
-  let q = 88;
-  for (;;) {
-    await p.locator('.wrap').screenshot({ path: file, type: 'jpeg', quality: q });
-    if (fs.statSync(file).size < 1024 * 1024 || q <= 60) break;
-    q -= 8;
+try {
+  const ctx = await b.newContext({ viewport: { width: 720, height: 800 }, deviceScaleFactor: 1.5 });
+  const p = await ctx.newPage();
+  for (const [i, c] of (cfg.cards ?? []).entries()) {
+    await p.setContent(page(c), { waitUntil: 'load' });
+    const name = c.out ?? `xcard-${String(i + 1).padStart(2, '0')}.jpg`;
+    const file = path.join(out, name);
+    let q = 88;
+    for (;;) {
+      await p.locator('.wrap').screenshot({ path: file, type: 'jpeg', quality: q });
+      if (fs.statSync(file).size < 1024 * 1024 || q <= 60) break;
+      q -= 8;
+    }
+    const kb = fs.statSync(file).size / 1024;
+    if (kb >= 1024) bad++;
+    console.log(`${kb >= 1024 ? '✗' : '✓'} ${name} ${kb.toFixed(0)}KB`);
   }
-  const kb = fs.statSync(file).size / 1024;
-  if (kb >= 1024) bad++;
-  console.log(`${kb >= 1024 ? '✗' : '✓'} ${name} ${kb.toFixed(0)}KB`);
+} finally {
+  await b.close();
 }
-await b.close();
 process.exit(bad ? 1 : 0);

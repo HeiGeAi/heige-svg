@@ -82,3 +82,48 @@ test('粘进公众号的正文和卡片：行高一律写像素', () => {
   const html = fs.readFileSync(path.join(out, 'article.html'), 'utf8');
   assert.deepEqual(html.match(/line-height:\s*[\d.]+(?=[;"])/g) ?? [], []);
 });
+
+test('fromMarkdown 去除 UTF-8 BOM 并兼容 CR/CRLF 换行', () => {
+  const { title, blocks } = fromMarkdown('\uFEFF# 带 BOM 标题\r\r第一段\r\n第二段');
+  assert.equal(title, '带 BOM 标题');
+  assert.deepEqual(blocks, [{ p: '第一段' }, { p: '第二段' }]);
+});
+
+test('build.mjs 遇到不存在的 scene 报校验错而不是抛出 TypeError', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'heige-bad-scene-'));
+  const script = path.join(dir, 'bad.mjs');
+  const out = path.join(dir, 'out');
+  fs.writeFileSync(script, 'export default { title: "测试", blocks: [{ scene: "nonexistentScene", meta: {}, data: {} }] };\n');
+  let err;
+  try {
+    execFileSync(process.execPath, [path.join(root, 'bin/build.mjs'), script, out], { encoding: 'utf8', stdio: 'pipe' });
+  } catch (e) {
+    err = e;
+  }
+  assert.ok(err, 'expected non-zero exit');
+  assert.equal(err.status, 1);
+  assert.match(err.stdout, /没有这个场景：nonexistentScene/);
+  assert.doesNotMatch(err.stderr, /TypeError/);
+});
+
+test('qa.mjs 和 xcard.mjs 支持含 # 的目录与空昵称卡片', (t) => {
+  const hasChrome = Boolean(process.env.CHROME_PATH) || [
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/usr/bin/google-chrome',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+  ].some((p) => fs.existsSync(p));
+  if (!hasChrome) { t.skip('no local Chrome found'); return; }
+
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'heige-qa-'));
+  const out = path.join(dir, 'draft#1');
+  execFileSync(process.execPath, [path.join(root, 'bin/build.mjs'), path.join(root, 'examples/markdown-figs.mjs'), out], { stdio: 'pipe' });
+  execFileSync(process.execPath, [path.join(root, 'bin/qa.mjs'), out], { stdio: 'pipe' });
+  assert.ok(fs.existsSync(path.join(out, 'qa', 'sheet.png')));
+
+  const cfg = path.join(dir, 'empty-name.json');
+  const xout = path.join(dir, 'xcards');
+  fs.writeFileSync(cfg, JSON.stringify({ cards: [{ name: '', handle: '@anon', text: 'hello' }] }));
+  execFileSync(process.execPath, [path.join(root, 'bin/xcard.mjs'), cfg, xout], { stdio: 'pipe' });
+  assert.ok(fs.existsSync(path.join(xout, 'xcard-01.jpg')));
+});

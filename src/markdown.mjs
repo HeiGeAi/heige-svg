@@ -10,7 +10,7 @@
 //   ```prompt 标题    → 提示词卡（```card 同义；不写类型的 ``` 也按提示词卡处理，标题为「代码」）
 //   ```say 标题       → 话术卡
 export function fromMarkdown(md, { figs = {} } = {}) {
-  const lines = String(md).replace(/\r\n/g, '\n').replace(/<b><font color="red">([\s\S]*?)<\/font><\/b>/g, '**$1**').split('\n');
+  const lines = String(md).replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n').replace(/<b><font color="red">([\s\S]*?)<\/font><\/b>/g, '**$1**').split('\n');
   const blocks = [];
   let title;
   for (let i = 0; i < lines.length; i++) {
